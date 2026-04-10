@@ -4,7 +4,7 @@ import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, Sh
 const ImageWithFallback = ({ src, alt, className }: { src: string, alt: string, className: string }) => {
   const [errorCount, setErrorCount] = useState(0);
 
-  if (errorCount >= 2) {
+  if (!src || errorCount >= 2) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-100">
         <ImageIcon className="w-8 h-8 text-gray-400" />
@@ -12,7 +12,11 @@ const ImageWithFallback = ({ src, alt, className }: { src: string, alt: string, 
     );
   }
 
-  const currentSrc = errorCount === 0 ? src : `/api/proxy-image?url=${encodeURIComponent(src)}`;
+  // Proactively proxy .heic images since browsers don't support them
+  const isHeic = src.includes('.heic');
+  const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(src)}&output=webp`;
+  
+  const currentSrc = (errorCount === 0 && !isHeic) ? src : proxyUrl;
 
   return (
     <img
@@ -27,16 +31,18 @@ const ImageWithFallback = ({ src, alt, className }: { src: string, alt: string, 
 
 export default function App() {
   const [apiKey, setApiKey] = useState("dedi131");
-  const [currentView, setCurrentView] = useState<"home" | "gimage" | "tokopedia" | "downloader" | "tiktok">("home");
+  const [currentView, setCurrentView] = useState<"home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo">("home");
   
   // Separate query states for each tab
   const [gimageQuery, setGimageQuery] = useState("Cewek cantik");
   const [tokopediaQuery, setTokopediaQuery] = useState("hp");
   const [downloaderQuery, setDownloaderQuery] = useState("https://vt.tiktok.com/ZS6EMauTA/");
   const [tiktokQuery, setTiktokQuery] = useState("pargoy");
+  const [meloloQuery, setMeloloQuery] = useState("cinta");
   
   const [results, setResults] = useState<any[]>([]);
   const [downloaderResult, setDownloaderResult] = useState<any>(null);
+  const [meloloDetail, setMeloloDetail] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -46,6 +52,7 @@ export default function App() {
   // Modal state
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
   const [activeVideoType, setActiveVideoType] = useState<"iframe" | "video">("iframe");
+  const [activeEpisodeIndex, setActiveEpisodeIndex] = useState<number | null>(null);
 
   // Autoplay TikTok videos on scroll
   useEffect(() => {
@@ -100,14 +107,14 @@ export default function App() {
     }
   };
 
-  const handleSearch = async (e?: React.FormEvent, keyToUse?: string, viewToUse?: "home" | "gimage" | "tokopedia" | "downloader" | "tiktok") => {
+  const handleSearch = async (e?: React.FormEvent, keyToUse?: string, viewToUse?: "home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo") => {
     if (e) e.preventDefault();
     const currentKey = keyToUse || apiKey;
     const view = viewToUse || currentView;
     
     if (view === "home") return;
 
-    const currentQuery = view === "gimage" ? gimageQuery : view === "tokopedia" ? tokopediaQuery : view === "tiktok" ? tiktokQuery : downloaderQuery;
+    const currentQuery = view === "gimage" ? gimageQuery : view === "tokopedia" ? tokopediaQuery : view === "tiktok" ? tiktokQuery : view === "melolo" ? meloloQuery : downloaderQuery;
     
     if (!currentKey) {
       setShowSettings(true);
@@ -122,6 +129,7 @@ export default function App() {
         setDownloaderResult(null);
       } else {
         setResults([]);
+        setMeloloDetail(null);
       }
 
       let data: any;
@@ -140,6 +148,9 @@ export default function App() {
         data = await res.json();
       } else if (view === "tiktok") {
         const res = await fetch(`https://api.ferdev.my.id/search/tiktok?query=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
+        data = await res.json();
+      } else if (view === "melolo") {
+        const res = await fetch(`https://api.ferdev.my.id/internet/melolo/search?query=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
         data = await res.json();
       } else if (view === "downloader") {
         const res = await fetch(`https://api.ferdev.my.id/downloader/allinone?link=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
@@ -178,6 +189,56 @@ export default function App() {
       setError(err.message || "Terjadi kesalahan saat mencari");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMeloloCardClick = async (item: any) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`https://api.ferdev.my.id/internet/melolo/detail?bookId=${item.book_id}&apikey=${apiKey}`);
+      const data = await res.json();
+      if (data.success && data.result) {
+        setMeloloDetail(data.result);
+      } else {
+        throw new Error(data.message || "Gagal mengambil detail film");
+      }
+    } catch (err: any) {
+      setError(err.message || "Terjadi kesalahan saat mengambil detail");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMeloloEpisodeClick = async (episode: any, index: number) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`https://api.ferdev.my.id/internet/melolo/stream?videoId=${episode.video_id}&apikey=${apiKey}`);
+      const data = await res.json();
+      if (data.success && data.result && data.result.length > 0) {
+        // Find the highest quality video
+        const bestQuality = data.result.reduce((prev: any, current: any) => {
+          return (prev.size > current.size) ? prev : current;
+        });
+        setActiveVideoUrl(bestQuality.url);
+        setActiveVideoType("video");
+        setActiveEpisodeIndex(index);
+      } else {
+        alert("Video tidak tersedia");
+      }
+    } catch (err: any) {
+      alert("Gagal memutar video: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVideoEnded = () => {
+    if (currentView === "melolo" && meloloDetail && activeEpisodeIndex !== null) {
+      const nextIdx = activeEpisodeIndex + 1;
+      if (nextIdx < meloloDetail.episodes.length) {
+        handleMeloloEpisodeClick(meloloDetail.episodes[nextIdx], nextIdx);
+      }
     }
   };
 
@@ -254,7 +315,7 @@ export default function App() {
               <p className="text-lg text-gray-500 max-w-2xl mx-auto">Pilih fitur yang ingin Anda gunakan dari menu di bawah ini. Semua kebutuhan pencarian Anda dalam satu tempat.</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
               {/* Box 1: GImage */}
               <div 
                 onClick={() => setCurrentView("gimage")} 
@@ -310,6 +371,20 @@ export default function App() {
                   <p className="text-sm text-gray-500 leading-relaxed">Cari dan tonton video TikTok dengan pengalaman scroll vertikal seperti di aplikasinya.</p>
                 </div>
               </div>
+
+              {/* Box 5: Melolo */}
+              <div 
+                onClick={() => setCurrentView("melolo")} 
+                className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-purple-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
+              >
+                <div className="w-20 h-20 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-100 transition-all duration-300">
+                  <Play className="w-10 h-10" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Melolo</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">Cari dan tonton berbagai film serta serial favorit Anda dengan mudah.</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -321,26 +396,27 @@ export default function App() {
             <form onSubmit={(e) => handleSearch(e)} className="relative max-w-2xl mx-auto w-full animate-in fade-in slide-in-from-top-4 duration-300">
               <input
                 type="text"
-                value={currentView === "gimage" ? gimageQuery : currentView === "tokopedia" ? tokopediaQuery : currentView === "tiktok" ? tiktokQuery : downloaderQuery}
+                value={currentView === "gimage" ? gimageQuery : currentView === "tokopedia" ? tokopediaQuery : currentView === "tiktok" ? tiktokQuery : currentView === "melolo" ? meloloQuery : downloaderQuery}
                 onChange={(e) => {
                   if (currentView === "gimage") setGimageQuery(e.target.value);
                   else if (currentView === "tokopedia") setTokopediaQuery(e.target.value);
                   else if (currentView === "tiktok") setTiktokQuery(e.target.value);
+                  else if (currentView === "melolo") setMeloloQuery(e.target.value);
                   else setDownloaderQuery(e.target.value);
                 }}
-                placeholder={currentView === "gimage" ? "Cari gambar atau video..." : currentView === "tokopedia" ? "Cari produk di Tokopedia..." : currentView === "tiktok" ? "Cari video TikTok..." : "Masukkan link video (TikTok, dll)..."}
+                placeholder={currentView === "gimage" ? "Cari gambar atau video..." : currentView === "tokopedia" ? "Cari produk di Tokopedia..." : currentView === "tiktok" ? "Cari video TikTok..." : currentView === "melolo" ? "Cari film atau serial..." : "Masukkan link video (TikTok, dll)..."}
                 className={`w-full bg-white border border-gray-300 rounded-2xl py-4 pl-5 pr-14 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all shadow-sm ${
-                  currentView === "gimage" ? "focus:ring-pink-500" : currentView === "tokopedia" ? "focus:ring-green-500" : currentView === "tiktok" ? "focus:ring-black" : "focus:ring-blue-500"
+                  currentView === "gimage" ? "focus:ring-pink-500" : currentView === "tokopedia" ? "focus:ring-green-500" : currentView === "tiktok" ? "focus:ring-black" : currentView === "melolo" ? "focus:ring-purple-500" : "focus:ring-blue-500"
                 }`}
               />
               <button
                 type="submit"
                 disabled={loading}
                 className={`absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center text-white rounded-xl transition-colors disabled:opacity-50 ${
-                  currentView === "gimage" ? "bg-pink-600 hover:bg-pink-500" : currentView === "tokopedia" ? "bg-green-600 hover:bg-green-500" : currentView === "tiktok" ? "bg-black hover:bg-gray-800" : "bg-blue-600 hover:bg-blue-500"
+                  currentView === "gimage" ? "bg-pink-600 hover:bg-pink-500" : currentView === "tokopedia" ? "bg-green-600 hover:bg-green-500" : currentView === "tiktok" ? "bg-black hover:bg-gray-800" : currentView === "melolo" ? "bg-purple-600 hover:bg-purple-500" : "bg-blue-600 hover:bg-blue-500"
                 }`}
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : currentView === "downloader" ? <Download className="w-5 h-5" /> : currentView === "tiktok" ? <Video className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : currentView === "downloader" ? <Download className="w-5 h-5" /> : currentView === "tiktok" ? <Video className="w-5 h-5" /> : currentView === "melolo" ? <Play className="w-5 h-5" /> : <Search className="w-5 h-5" />}
               </button>
             </form>
 
@@ -466,6 +542,124 @@ export default function App() {
               </div>
             )}
 
+            {/* Melolo Series List */}
+            {!loading && currentView === "melolo" && !meloloDetail && results.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {results.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    onClick={() => handleMeloloCardClick(item)}
+                    className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer group flex flex-col hover:border-purple-300"
+                  >
+                    <div className="relative w-full aspect-[2/3] bg-gray-100 overflow-hidden">
+                      {item.cover ? (
+                        <ImageWithFallback 
+                          src={item.cover} 
+                          alt={item.title || "Cover"} 
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="w-8 h-8 text-gray-400" />
+                        </div>
+                      )}
+                      {item.status && (
+                        <div className="absolute top-2 right-2 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur-sm">
+                          {item.status}
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3 flex-1 flex flex-col gap-1">
+                      <h3 className="text-sm font-bold text-gray-800 line-clamp-2 group-hover:text-purple-600 transition-colors">
+                        {item.title || "Tanpa Judul"}
+                      </h3>
+                      <p className="text-xs text-gray-500 line-clamp-1">{item.author}</p>
+                      <div className="mt-auto pt-2 flex items-center justify-between">
+                        <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-md font-medium">
+                          {item.total_chapters} Eps
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Melolo Detail View */}
+            {!loading && currentView === "melolo" && meloloDetail && (
+              <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <button 
+                  onClick={() => setMeloloDetail(null)}
+                  className="flex items-center gap-2 text-gray-600 hover:text-purple-600 font-medium w-fit transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                  Kembali ke Hasil Pencarian
+                </button>
+                
+                <div className="bg-white rounded-3xl border border-gray-200 p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-8">
+                  <div className="w-full md:w-1/4 shrink-0">
+                    <div className="aspect-[2/3] rounded-2xl overflow-hidden shadow-md">
+                      <ImageWithFallback src={meloloDetail.cover} alt={meloloDetail.title} className="w-full h-full object-cover" />
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col gap-4">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900">{meloloDetail.title}</h2>
+                        <span className="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-1 rounded-full">{meloloDetail.status}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {meloloDetail.tags?.map((tag: string, i: number) => (
+                          <span key={i} className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-full">{tag}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="prose prose-sm text-gray-600 max-w-none">
+                      <p>{meloloDetail.intro || meloloDetail.sinopsis}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <Play className="w-6 h-6 text-purple-600" />
+                    Daftar Episode ({meloloDetail.total_episodes || meloloDetail.episodes?.length})
+                  </h3>
+                  <div 
+                    className="grid grid-rows-3 grid-flow-col gap-4 overflow-x-auto pb-6 snap-x hide-scrollbar" 
+                    style={{ gridAutoColumns: "minmax(280px, 1fr)" }}
+                  >
+                    {meloloDetail.episodes?.map((ep: any, idx: number) => (
+                      <div 
+                        key={idx}
+                        onClick={() => handleMeloloEpisodeClick(ep, idx)}
+                        className={`bg-white border rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all group snap-start ${
+                          activeEpisodeIndex === idx ? "border-purple-500 bg-purple-50" : "border-gray-200 hover:border-purple-300"
+                        }`}
+                      >
+                        <div className="relative w-24 h-16 bg-gray-100 rounded-lg overflow-hidden shrink-0">
+                          <ImageWithFallback src={ep.cover} alt={`Episode ${ep.episode}`} className="w-full h-full object-cover" />
+                          <div className={`absolute inset-0 flex items-center justify-center transition-colors ${
+                            activeEpisodeIndex === idx ? "bg-black/40" : "bg-black/20 group-hover:bg-black/40"
+                          }`}>
+                            <Play className={`w-6 h-6 ${activeEpisodeIndex === idx ? "text-purple-400" : "text-white"}`} />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className={`font-bold transition-colors truncate ${
+                            activeEpisodeIndex === idx ? "text-purple-700" : "text-gray-900 group-hover:text-purple-600"
+                          }`}>
+                            Episode {ep.episode}
+                          </h4>
+                          <p className="text-xs text-gray-500 truncate">{Math.floor(ep.duration / 60)}:{String(ep.duration % 60).padStart(2, '0')}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Results Grid (GImage & Tokopedia) */}
             {!loading && (currentView === "gimage" || currentView === "tokopedia") && results.length > 0 && (
               <div className={`grid gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 ${
@@ -563,12 +757,14 @@ export default function App() {
               </div>
             )}
 
-            {!loading && !error && currentView !== "downloader" && results.length === 0 && (
+            {!loading && !error && currentView !== "downloader" && results.length === 0 && !meloloDetail && (
               <div className="text-center py-20 text-gray-500 animate-in fade-in">
                 {currentView === "gimage" ? (
                   <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 ) : currentView === "tiktok" ? (
                   <Video className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                ) : currentView === "melolo" ? (
+                  <Play className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 ) : (
                   <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 )}
@@ -593,7 +789,10 @@ export default function App() {
             {/* Modal Header */}
             <div className="absolute top-0 left-0 right-0 z-10 flex justify-end p-4 bg-gradient-to-b from-black/80 to-transparent">
               <button 
-                onClick={() => setActiveVideoUrl(null)}
+                onClick={() => {
+                  setActiveVideoUrl(null);
+                  setActiveEpisodeIndex(null);
+                }}
                 className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-full backdrop-blur-md transition-colors"
                 title="Tutup Video"
               >
@@ -615,6 +814,8 @@ export default function App() {
                   src={activeVideoUrl} 
                   controls 
                   autoPlay
+                  playsInline
+                  onEnded={handleVideoEnded}
                   className="w-full h-full max-h-[100dvh] md:max-h-[80vh] object-contain"
                 />
               )}
