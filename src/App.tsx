@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video } from "lucide-react";
+import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video, Youtube } from "lucide-react";
 
 const ImageWithFallback = ({ src, alt, className }: { src: string, alt: string, className: string }) => {
   const [errorCount, setErrorCount] = useState(0);
@@ -31,7 +31,7 @@ const ImageWithFallback = ({ src, alt, className }: { src: string, alt: string, 
 
 export default function App() {
   const [apiKey, setApiKey] = useState("dedi131");
-  const [currentView, setCurrentView] = useState<"home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo">("home");
+  const [currentView, setCurrentView] = useState<"home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo" | "youtube">("home");
   
   // Separate query states for each tab
   const [gimageQuery, setGimageQuery] = useState("Cewek cantik");
@@ -39,10 +39,12 @@ export default function App() {
   const [downloaderQuery, setDownloaderQuery] = useState("https://vt.tiktok.com/ZS6EMauTA/");
   const [tiktokQuery, setTiktokQuery] = useState("pargoy");
   const [meloloQuery, setMeloloQuery] = useState("cinta");
+  const [youtubeQuery, setYoutubeQuery] = useState("trending indonesia");
   
   const [results, setResults] = useState<any[]>([]);
   const [downloaderResult, setDownloaderResult] = useState<any>(null);
   const [meloloDetail, setMeloloDetail] = useState<any>(null);
+  const [youtubeDetail, setYoutubeDetail] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -107,14 +109,14 @@ export default function App() {
     }
   };
 
-  const handleSearch = async (e?: React.FormEvent, keyToUse?: string, viewToUse?: "home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo") => {
+  const handleSearch = async (e?: React.FormEvent, keyToUse?: string, viewToUse?: "home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo" | "youtube") => {
     if (e) e.preventDefault();
     const currentKey = keyToUse || apiKey;
     const view = viewToUse || currentView;
     
     if (view === "home") return;
 
-    const currentQuery = view === "gimage" ? gimageQuery : view === "tokopedia" ? tokopediaQuery : view === "tiktok" ? tiktokQuery : view === "melolo" ? meloloQuery : downloaderQuery;
+    const currentQuery = view === "gimage" ? gimageQuery : view === "tokopedia" ? tokopediaQuery : view === "tiktok" ? tiktokQuery : view === "melolo" ? meloloQuery : view === "youtube" ? youtubeQuery : downloaderQuery;
     
     if (!currentKey) {
       setShowSettings(true);
@@ -130,6 +132,7 @@ export default function App() {
       } else {
         setResults([]);
         setMeloloDetail(null);
+        setYoutubeDetail(null);
       }
 
       let data: any;
@@ -151,6 +154,9 @@ export default function App() {
         data = await res.json();
       } else if (view === "melolo") {
         const res = await fetch(`https://api.ferdev.my.id/internet/melolo/search?query=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
+        data = await res.json();
+      } else if (view === "youtube") {
+        const res = await fetch(`https://api.ferdev.my.id/search/youtube?query=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
         data = await res.json();
       } else if (view === "downloader") {
         const res = await fetch(`https://api.ferdev.my.id/downloader/allinone?link=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
@@ -242,6 +248,23 @@ export default function App() {
     }
   };
 
+  const handleYoutubeCardClick = (item: any, index: number) => {
+    // Extract video ID from URL (e.g., https://youtube.com/watch?v=YKuHdOxj46I)
+    const match = item.url.match(/v=([^&]+)/);
+    if (match && match[1]) {
+      const videoId = match[1];
+      setYoutubeDetail({
+        currentVideo: item,
+        currentIndex: index,
+        embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1`
+      });
+      // Scroll to top to see the player
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.open(item.url, '_blank');
+    }
+  };
+
   const handleCardClick = (item: any) => {
     if (currentView === "gimage") {
       if (item.is_video) {
@@ -278,14 +301,29 @@ export default function App() {
           <div className="flex items-center gap-4">
             {currentView !== "home" && (
               <button 
-                onClick={() => setCurrentView("home")}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
+                onClick={() => {
+                  setCurrentView("home");
+                  setYoutubeDetail(null);
+                  setMeloloDetail(null);
+                }}
+                className={`p-2 rounded-full transition-colors ${
+                  currentView === "gimage" ? "hover:bg-pink-100 text-pink-600" :
+                  currentView === "tokopedia" ? "hover:bg-green-100 text-green-600" :
+                  currentView === "tiktok" ? "hover:bg-gray-200 text-black" :
+                  currentView === "melolo" ? "hover:bg-purple-100 text-purple-600" :
+                  currentView === "youtube" ? "hover:bg-red-100 text-red-600" :
+                  "hover:bg-blue-100 text-blue-600"
+                }`}
                 title="Kembali ke Beranda"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
             )}
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentView("home")}>
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
+              setCurrentView("home");
+              setYoutubeDetail(null);
+              setMeloloDetail(null);
+            }}>
               <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-1.5 rounded-lg text-white shadow-sm">
                 <LayoutGrid className="w-5 h-5" />
               </div>
@@ -315,7 +353,7 @@ export default function App() {
               <p className="text-lg text-gray-500 max-w-2xl mx-auto">Pilih fitur yang ingin Anda gunakan dari menu di bawah ini. Semua kebutuhan pencarian Anda dalam satu tempat.</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
               {/* Box 1: GImage */}
               <div 
                 onClick={() => setCurrentView("gimage")} 
@@ -385,6 +423,20 @@ export default function App() {
                   <p className="text-sm text-gray-500 leading-relaxed">Cari dan tonton berbagai film serta serial favorit Anda dengan mudah.</p>
                 </div>
               </div>
+
+              {/* Box 6: Youtube */}
+              <div 
+                onClick={() => setCurrentView("youtube")} 
+                className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-red-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
+              >
+                <div className="w-20 h-20 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-red-100 transition-all duration-300">
+                  <Youtube className="w-10 h-10" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">YouTube</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">Cari dan tonton video YouTube favorit Anda tanpa iklan yang mengganggu.</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -396,27 +448,28 @@ export default function App() {
             <form onSubmit={(e) => handleSearch(e)} className="relative max-w-2xl mx-auto w-full animate-in fade-in slide-in-from-top-4 duration-300">
               <input
                 type="text"
-                value={currentView === "gimage" ? gimageQuery : currentView === "tokopedia" ? tokopediaQuery : currentView === "tiktok" ? tiktokQuery : currentView === "melolo" ? meloloQuery : downloaderQuery}
+                value={currentView === "gimage" ? gimageQuery : currentView === "tokopedia" ? tokopediaQuery : currentView === "tiktok" ? tiktokQuery : currentView === "melolo" ? meloloQuery : currentView === "youtube" ? youtubeQuery : downloaderQuery}
                 onChange={(e) => {
                   if (currentView === "gimage") setGimageQuery(e.target.value);
                   else if (currentView === "tokopedia") setTokopediaQuery(e.target.value);
                   else if (currentView === "tiktok") setTiktokQuery(e.target.value);
                   else if (currentView === "melolo") setMeloloQuery(e.target.value);
+                  else if (currentView === "youtube") setYoutubeQuery(e.target.value);
                   else setDownloaderQuery(e.target.value);
                 }}
-                placeholder={currentView === "gimage" ? "Cari gambar atau video..." : currentView === "tokopedia" ? "Cari produk di Tokopedia..." : currentView === "tiktok" ? "Cari video TikTok..." : currentView === "melolo" ? "Cari film atau serial..." : "Masukkan link video (TikTok, dll)..."}
+                placeholder={currentView === "gimage" ? "Cari gambar atau video..." : currentView === "tokopedia" ? "Cari produk di Tokopedia..." : currentView === "tiktok" ? "Cari video TikTok..." : currentView === "melolo" ? "Cari film atau serial..." : currentView === "youtube" ? "Cari video YouTube..." : "Masukkan link video (TikTok, dll)..."}
                 className={`w-full bg-white border border-gray-300 rounded-2xl py-4 pl-5 pr-14 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all shadow-sm ${
-                  currentView === "gimage" ? "focus:ring-pink-500" : currentView === "tokopedia" ? "focus:ring-green-500" : currentView === "tiktok" ? "focus:ring-black" : currentView === "melolo" ? "focus:ring-purple-500" : "focus:ring-blue-500"
+                  currentView === "gimage" ? "focus:ring-pink-500" : currentView === "tokopedia" ? "focus:ring-green-500" : currentView === "tiktok" ? "focus:ring-black" : currentView === "melolo" ? "focus:ring-purple-500" : currentView === "youtube" ? "focus:ring-red-500" : "focus:ring-blue-500"
                 }`}
               />
               <button
                 type="submit"
                 disabled={loading}
                 className={`absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center text-white rounded-xl transition-colors disabled:opacity-50 ${
-                  currentView === "gimage" ? "bg-pink-600 hover:bg-pink-500" : currentView === "tokopedia" ? "bg-green-600 hover:bg-green-500" : currentView === "tiktok" ? "bg-black hover:bg-gray-800" : currentView === "melolo" ? "bg-purple-600 hover:bg-purple-500" : "bg-blue-600 hover:bg-blue-500"
+                  currentView === "gimage" ? "bg-pink-600 hover:bg-pink-500" : currentView === "tokopedia" ? "bg-green-600 hover:bg-green-500" : currentView === "tiktok" ? "bg-black hover:bg-gray-800" : currentView === "melolo" ? "bg-purple-600 hover:bg-purple-500" : currentView === "youtube" ? "bg-red-600 hover:bg-red-500" : "bg-blue-600 hover:bg-blue-500"
                 }`}
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : currentView === "downloader" ? <Download className="w-5 h-5" /> : currentView === "tiktok" ? <Video className="w-5 h-5" /> : currentView === "melolo" ? <Play className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : currentView === "downloader" ? <Download className="w-5 h-5" /> : currentView === "tiktok" ? <Video className="w-5 h-5" /> : currentView === "melolo" ? <Play className="w-5 h-5" /> : currentView === "youtube" ? <Youtube className="w-5 h-5" /> : <Search className="w-5 h-5" />}
               </button>
             </form>
 
@@ -660,6 +713,162 @@ export default function App() {
               </div>
             )}
 
+            {/* YouTube Categories */}
+            {!loading && currentView === "youtube" && !youtubeDetail && (
+              <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 mb-4 animate-in fade-in">
+                {["Trending Indonesia", "Musik Populer", "Berita Terbaru", "Gaming", "Olahraga", "Film & Animasi"].map((cat, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setYoutubeQuery(cat);
+                      handleSearch(undefined, undefined, "youtube");
+                    }}
+                    className="whitespace-nowrap px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* YouTube Results Grid */}
+            {!loading && currentView === "youtube" && !youtubeDetail && results.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {results.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    onClick={() => handleYoutubeCardClick(item, idx)}
+                    className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-xl transition-all cursor-pointer group flex flex-col hover:border-red-300"
+                  >
+                    <div className="relative w-full aspect-video bg-gray-100 overflow-hidden">
+                      {item.thumbnail ? (
+                        <ImageWithFallback 
+                          src={item.thumbnail} 
+                          alt={item.title || "Thumbnail"} 
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Youtube className="w-12 h-12 text-gray-400" />
+                        </div>
+                      )}
+                      {item.duration && (
+                        <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs font-bold px-2 py-1 rounded-md backdrop-blur-sm">
+                          {item.duration}
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <div className="bg-red-600 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transform scale-50 group-hover:scale-100 transition-all duration-300 shadow-lg">
+                          <Play className="w-6 h-6 ml-1" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
+                        <Youtube className="w-5 h-5 text-gray-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-bold text-gray-900 line-clamp-2 group-hover:text-red-600 transition-colors mb-1">
+                          {item.title || "Tanpa Judul"}
+                        </h3>
+                        <p className="text-sm text-gray-500 truncate">{item.author}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                          {item.views && <span>{item.views.toLocaleString()} views</span>}
+                          {item.views && item.uploadDate && <span>•</span>}
+                          {item.uploadDate && <span>{item.uploadDate}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* YouTube Detail View */}
+            {!loading && currentView === "youtube" && youtubeDetail && (
+              <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <button 
+                  onClick={() => setYoutubeDetail(null)}
+                  className="flex items-center gap-2 text-gray-600 hover:text-red-600 font-medium w-fit transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                  Kembali ke Hasil Pencarian
+                </button>
+                
+                {/* Player */}
+                <div className="w-full bg-black rounded-2xl overflow-hidden shadow-xl relative h-[40vh] sm:h-[50vh] md:h-[60vh] lg:h-[75vh]">
+                  <iframe 
+                    src={youtubeDetail.embedUrl} 
+                    className="absolute inset-0 w-full h-full border-0"
+                    allowFullScreen
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  ></iframe>
+                </div>
+
+                {/* Video Info */}
+                <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                  <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">{youtubeDetail.currentVideo.title}</h2>
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 font-medium text-gray-900">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                        <Youtube className="w-4 h-4 text-red-600" />
+                      </div>
+                      {youtubeDetail.currentVideo.author}
+                    </div>
+                    {youtubeDetail.currentVideo.views && (
+                      <span className="bg-gray-100 px-3 py-1 rounded-full">{youtubeDetail.currentVideo.views.toLocaleString()} views</span>
+                    )}
+                    {youtubeDetail.currentVideo.uploadDate && (
+                      <span className="bg-gray-100 px-3 py-1 rounded-full">{youtubeDetail.currentVideo.uploadDate}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Up Next List */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Play className="w-5 h-5 text-red-600" />
+                    Putar Selanjutnya
+                  </h3>
+                  <div className="flex flex-col gap-3">
+                    {results.map((item, idx) => {
+                      if (idx === youtubeDetail.currentIndex) return null;
+                      return (
+                        <div 
+                          key={idx}
+                          onClick={() => handleYoutubeCardClick(item, idx)}
+                          className="bg-white border border-gray-200 rounded-xl p-3 flex gap-4 cursor-pointer hover:border-red-300 hover:shadow-md transition-all group"
+                        >
+                          <div className="relative w-40 aspect-video bg-gray-100 rounded-lg overflow-hidden shrink-0">
+                            <ImageWithFallback src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
+                            {item.duration && (
+                              <div className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
+                                {item.duration}
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                              <Play className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0 py-1">
+                            <h4 className="font-bold text-sm text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 mb-1">
+                              {item.title}
+                            </h4>
+                            <p className="text-xs text-gray-500 mb-1">{item.author}</p>
+                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                              {item.views && <span>{item.views.toLocaleString()} views</span>}
+                              {item.views && item.uploadDate && <span>•</span>}
+                              {item.uploadDate && <span>{item.uploadDate}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Results Grid (GImage & Tokopedia) */}
             {!loading && (currentView === "gimage" || currentView === "tokopedia") && results.length > 0 && (
               <div className={`grid gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 ${
@@ -757,7 +966,7 @@ export default function App() {
               </div>
             )}
 
-            {!loading && !error && currentView !== "downloader" && results.length === 0 && !meloloDetail && (
+            {!loading && !error && currentView !== "downloader" && results.length === 0 && !meloloDetail && !youtubeDetail && (
               <div className="text-center py-20 text-gray-500 animate-in fade-in">
                 {currentView === "gimage" ? (
                   <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -765,6 +974,8 @@ export default function App() {
                   <Video className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 ) : currentView === "melolo" ? (
                   <Play className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                ) : currentView === "youtube" ? (
+                  <Youtube className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 ) : (
                   <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 )}
