@@ -124,13 +124,36 @@ export default function App() {
         setResults([]);
       }
 
-      const endpoint = view === "gimage" ? "/api/gimage" : view === "tokopedia" ? "/api/tokopedia" : view === "tiktok" ? "/api/search-tiktok" : "/api/downloader";
-      const paramName = view === "downloader" ? "link" : "query";
-      const res = await fetch(`${endpoint}?${paramName}=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
-      const data = await res.json();
+      let data: any;
 
-      if (!res.ok) {
-        throw new Error(data.error || data.message || "Gagal mengambil data");
+      if (view === "gimage") {
+        const res = await fetch(`https://api.ferdev.my.id/search/gimage?query=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
+        data = await res.json();
+        if (data.success && data.result) {
+          data.result = data.result.map((item: any) => ({
+            ...item,
+            is_video: item.url && (item.url.includes('tiktok.com') || item.url.includes('video') || (item.title && item.title.toLowerCase().includes('video')))
+          }));
+        }
+      } else if (view === "tokopedia") {
+        const res = await fetch(`https://api.ferdev.my.id/search/tokopedia?query=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
+        data = await res.json();
+      } else if (view === "tiktok") {
+        const res = await fetch(`https://api.ferdev.my.id/search/tiktok?query=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
+        data = await res.json();
+      } else if (view === "downloader") {
+        const res = await fetch(`https://api.ferdev.my.id/downloader/allinone?link=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
+        data = await res.json();
+        
+        // Fallback logic for TikTok
+        if ((!data.success || !data.data) && currentQuery.includes('tiktok.com')) {
+          const fallbackRes = await fetch(`https://api.ferdev.my.id/downloader/tiktok?link=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
+          data = await fallbackRes.json();
+        }
+      }
+
+      if (data.status === 400 || data.status === 500) {
+        throw new Error(data.message || data.error || "Gagal mengambil data");
       }
 
       if (data.success) {
