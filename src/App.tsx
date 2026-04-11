@@ -38,10 +38,11 @@ export default function App() {
   const [tokopediaQuery, setTokopediaQuery] = useState("hp");
   const [downloaderQuery, setDownloaderQuery] = useState("https://vt.tiktok.com/ZS6EMauTA/");
   const [tiktokQuery, setTiktokQuery] = useState("pargoy");
-  const [meloloQuery, setMeloloQuery] = useState("cinta");
+  const [meloloQuery, setMeloloQuery] = useState("");
   const [youtubeQuery, setYoutubeQuery] = useState("trending indonesia");
   
   const [results, setResults] = useState<any[]>([]);
+  const [meloloCategoriesData, setMeloloCategoriesData] = useState<{category: string, items: any[]}[]>([]);
   const [downloaderResult, setDownloaderResult] = useState<any>(null);
   const [meloloDetail, setMeloloDetail] = useState<any>(null);
   const [youtubeDetail, setYoutubeDetail] = useState<any>(null);
@@ -122,7 +123,7 @@ export default function App() {
       setShowSettings(true);
       return;
     }
-    if (!currentQuery.trim()) return;
+    if (!currentQuery.trim() && view !== "melolo") return;
 
     try {
       setLoading(true);
@@ -131,6 +132,7 @@ export default function App() {
         setDownloaderResult(null);
       } else {
         setResults([]);
+        setMeloloCategoriesData([]);
         setMeloloDetail(null);
         setYoutubeDetail(null);
       }
@@ -153,8 +155,24 @@ export default function App() {
         const res = await fetch(`https://api.ferdev.my.id/search/tiktok?query=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
         data = await res.json();
       } else if (view === "melolo") {
-        const res = await fetch(`https://api.ferdev.my.id/internet/melolo/search?query=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
-        data = await res.json();
+        if (!currentQuery.trim()) {
+          const categories = ["Terbaru", "Terpopuler", "Family", "Aksi", "Lucu", "Percintaan", "Horor", "Drama", "Fantasi"];
+          const promises = categories.map(cat => 
+            fetch(`https://api.ferdev.my.id/internet/melolo/search?query=${encodeURIComponent(cat)}&apikey=${encodeURIComponent(currentKey)}`).then(res => res.json()).catch(() => ({ success: false }))
+          );
+          const catsResults = await Promise.all(promises);
+          data = {
+            success: true,
+            isCategories: true,
+            data: categories.map((cat, i) => ({
+              category: cat,
+              items: catsResults[i].success ? catsResults[i].result : []
+            })).filter(c => c.items && c.items.length > 0)
+          };
+        } else {
+          const res = await fetch(`https://api.ferdev.my.id/internet/melolo/search?query=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
+          data = await res.json();
+        }
       } else if (view === "youtube") {
         const res = await fetch(`https://api.ferdev.my.id/search/youtube?query=${encodeURIComponent(currentQuery)}&apikey=${encodeURIComponent(currentKey)}`);
         data = await res.json();
@@ -176,6 +194,9 @@ export default function App() {
       if (data.success) {
         if (view === "downloader") {
           setDownloaderResult(data.data || data.result || data);
+        } else if (view === "melolo" && data.isCategories) {
+          setMeloloCategoriesData(data.data);
+          setResults([]);
         } else {
           const items = data.result || data.data || [];
           if (Array.isArray(items)) {
@@ -183,6 +204,7 @@ export default function App() {
           } else {
             setResults([]);
           }
+          if (view === "melolo") setMeloloCategoriesData([]);
         }
       } else {
         if (view === "downloader") {
@@ -196,6 +218,37 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getDownloaderVideoUrl = (result: any) => {
+    if (!result) return null;
+    
+    // Check for medias array (like Facebook)
+    if (result.medias && Array.isArray(result.medias) && result.medias.length > 0) {
+      const hdMedia = result.medias.find((m: any) => m.quality === 'hd' && m.extension === 'mp4');
+      if (hdMedia && hdMedia.url) return hdMedia.url;
+      
+      const anyMp4 = result.medias.find((m: any) => m.extension === 'mp4');
+      if (anyMp4 && anyMp4.url) return anyMp4.url;
+      
+      if (result.medias[0].url) return result.medias[0].url;
+    }
+    
+    // Fallback to play, video, or url
+    // If source is facebook, result.url is usually the original link, not the video file.
+    let videoUrl = result.play || result.video;
+    
+    if (!videoUrl && result.url && result.source !== 'facebook' && !result.url.includes('facebook.com')) {
+      videoUrl = result.url;
+    }
+
+    if (Array.isArray(videoUrl)) {
+      return videoUrl[0]?.url || videoUrl[0];
+    } else if (typeof videoUrl === 'object' && videoUrl !== null) {
+      return videoUrl.url || videoUrl.play;
+    }
+    
+    return typeof videoUrl === 'string' ? videoUrl : null;
   };
 
   const handleMeloloCardClick = async (item: any) => {
@@ -489,8 +542,9 @@ export default function App() {
                   <div 
                     className="w-full md:w-2/5 aspect-square md:aspect-auto bg-gray-100 relative group cursor-pointer"
                     onClick={() => {
-                      if (downloaderResult.play || downloaderResult.url) {
-                        setActiveVideoUrl(downloaderResult.play || downloaderResult.url);
+                      const videoUrl = getDownloaderVideoUrl(downloaderResult);
+                      if (videoUrl) {
+                        setActiveVideoUrl(videoUrl);
                         setActiveVideoType("video");
                       }
                     }}
@@ -507,7 +561,7 @@ export default function App() {
                       </div>
                     )}
                     
-                    {(downloaderResult.play || downloaderResult.url) && (
+                    {getDownloaderVideoUrl(downloaderResult) && (
                       <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/40 transition-colors">
                         <div className="bg-white/90 backdrop-blur-sm text-gray-900 p-4 rounded-full shadow-lg transform group-hover:scale-110 transition-transform">
                           <Play className="w-8 h-8 ml-1" />
@@ -534,12 +588,15 @@ export default function App() {
                     )}
 
                     <div className="mt-auto flex flex-col gap-3">
-                      {(downloaderResult.play || downloaderResult.url) && (
+                      {getDownloaderVideoUrl(downloaderResult) && (
                         <>
                           <button 
                             onClick={() => {
-                              setActiveVideoUrl(downloaderResult.play || downloaderResult.url);
-                              setActiveVideoType("video");
+                              const videoUrl = getDownloaderVideoUrl(downloaderResult);
+                              if (videoUrl) {
+                                setActiveVideoUrl(videoUrl);
+                                setActiveVideoType("video");
+                              }
                             }}
                             className="flex items-center justify-center gap-2 w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-xl transition-colors"
                           >
@@ -547,7 +604,7 @@ export default function App() {
                             Preview Video
                           </button>
                           <a 
-                            href={downloaderResult.play || downloaderResult.url} 
+                            href={getDownloaderVideoUrl(downloaderResult) || '#'} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 px-4 rounded-xl transition-colors"
@@ -595,7 +652,66 @@ export default function App() {
               </div>
             )}
 
-            {/* Melolo Series List */}
+            {/* Melolo Categories View */}
+            {!loading && currentView === "melolo" && !meloloDetail && meloloCategoriesData.length > 0 && (
+              <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {meloloCategoriesData.map((categoryData, catIdx) => (
+                  <div key={catIdx} className="bg-white p-5 md:p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col gap-4">
+                    <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                      <Play className="w-5 h-5 text-purple-600" />
+                      {categoryData.category}
+                    </h3>
+                    <div 
+                      className="grid grid-rows-2 grid-flow-col gap-4 overflow-x-auto pb-2 snap-x hide-scrollbar"
+                      style={{ gridAutoColumns: "minmax(140px, 1fr)" }}
+                    >
+                      {categoryData.items.map((item, idx) => (
+                        <div 
+                          key={idx} 
+                          onClick={() => handleMeloloCardClick(item)}
+                          className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer group flex flex-col hover:border-purple-300 snap-start w-[140px] sm:w-[160px] md:w-[180px]"
+                        >
+                          <div className="relative w-full aspect-[2/3] bg-gray-100 overflow-hidden">
+                            {item.cover ? (
+                              <ImageWithFallback 
+                                src={item.cover} 
+                                alt={item.title || "Cover"} 
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <ImageIcon className="w-8 h-8 text-gray-400" />
+                              </div>
+                            )}
+                            {item.status && (
+                              <div className="absolute top-2 right-2 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded backdrop-blur-sm">
+                                {item.status}
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                              <Play className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
+                            </div>
+                          </div>
+                          <div className="p-3 flex-1 flex flex-col gap-1">
+                            <h3 className="text-sm font-bold text-gray-800 line-clamp-2 group-hover:text-purple-600 transition-colors">
+                              {item.title || "Tanpa Judul"}
+                            </h3>
+                            <p className="text-xs text-gray-500 line-clamp-1">{item.author}</p>
+                            <div className="mt-auto pt-2 flex items-center justify-between">
+                              <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-md font-medium">
+                                {item.total_chapters} Eps
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Melolo Search Results List */}
             {!loading && currentView === "melolo" && !meloloDetail && results.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {results.map((item, idx) => (
@@ -640,7 +756,7 @@ export default function App() {
 
             {/* Melolo Detail View */}
             {!loading && currentView === "melolo" && meloloDetail && (
-              <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex flex-col gap-4 -mt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <button 
                   onClick={() => setMeloloDetail(null)}
                   className="flex items-center gap-2 text-gray-600 hover:text-purple-600 font-medium w-fit transition-colors"
@@ -649,7 +765,7 @@ export default function App() {
                   Kembali ke Hasil Pencarian
                 </button>
                 
-                <div className="bg-white rounded-3xl border border-gray-200 p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-8">
+                <div className="bg-white rounded-3xl border border-gray-200 p-5 md:p-6 shadow-sm flex flex-col md:flex-row gap-6">
                   <div className="w-full md:w-1/4 shrink-0">
                     <div className="aspect-[2/3] rounded-2xl overflow-hidden shadow-md">
                       <ImageWithFallback src={meloloDetail.cover} alt={meloloDetail.title} className="w-full h-full object-cover" />
@@ -966,7 +1082,7 @@ export default function App() {
               </div>
             )}
 
-            {!loading && !error && currentView !== "downloader" && results.length === 0 && !meloloDetail && !youtubeDetail && (
+            {!loading && !error && currentView !== "downloader" && results.length === 0 && meloloCategoriesData.length === 0 && !meloloDetail && !youtubeDetail && (
               <div className="text-center py-20 text-gray-500 animate-in fade-in">
                 {currentView === "gimage" ? (
                   <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -1026,6 +1142,7 @@ export default function App() {
                   controls 
                   autoPlay
                   playsInline
+                  referrerPolicy="no-referrer"
                   onEnded={handleVideoEnded}
                   className="w-full h-full max-h-[100dvh] md:max-h-[80vh] object-contain"
                 />
