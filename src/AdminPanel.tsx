@@ -38,6 +38,12 @@ export default function AdminPanel() {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
       console.error("Login error:", err);
+      
+      if (err.code === 'auth/unauthorized-domain') {
+        setLoginError(`Akses ditolak: Domain ini belum didaftarkan di Firebase. Silakan tambahkan domain Cloudflare Anda ke "Authorized domains" di Firebase Console.`);
+        return;
+      }
+
       // If user not found, maybe it's the first time? Let's create the default admin if it doesn't exist
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         if (username === 'admin' && password === 'password') {
@@ -49,8 +55,11 @@ export default function AdminPanel() {
             return;
           }
         }
+        setLoginError(`Username atau password salah`);
+        return;
       }
-      setLoginError(`Username atau password salah`);
+      
+      setLoginError(`Error: ${err.message}`);
     }
   };
 
