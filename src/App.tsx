@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video, Youtube, Shield } from "lucide-react";
+import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video, Youtube, Shield, User, Crown } from "lucide-react";
 import AdminPanel from "./AdminPanel";
 import { db } from './firebase';
 import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
@@ -38,14 +38,32 @@ export default function App() {
     return <AdminPanel />;
   }
 
-  const [apiKey, setApiKey] = useState("dedi131");
+  const [apiKey, setApiKey] = useState("");
   const [currentView, setCurrentView] = useState<"home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo" | "youtube">("home");
   
   // Rate limiting state
   const [visitorId, setVisitorId] = useState<string | null>(null);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+  const [userLimit, setUserLimit] = useState<number>(100);
+  const [requestCount, setRequestCount] = useState<number>(0);
 
   useEffect(() => {
+    const fetchGlobalApiKey = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'global');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setApiKey(docSnap.data().apiKey || "dedi131");
+        } else {
+          setApiKey("dedi131");
+        }
+      } catch (err) {
+        console.error("Error fetching API key:", err);
+        setApiKey("dedi131"); // Fallback
+      }
+    };
+    fetchGlobalApiKey();
+
     const initVisitor = async () => {
       try {
         // Get IP
@@ -66,7 +84,12 @@ export default function App() {
             requestCount: 0,
             limit: 100
           });
+          setUserLimit(100);
+          setRequestCount(0);
         } else {
+          const data = docSnap.data();
+          setUserLimit(data.limit);
+          setRequestCount(data.requestCount);
           await updateDoc(docRef, {
             lastSeen: Date.now(),
             userAgent: navigator.userAgent
@@ -86,6 +109,9 @@ export default function App() {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
+        setUserLimit(data.limit);
+        setRequestCount(data.requestCount);
+        
         if (data.limit > 0 && data.requestCount >= data.limit) {
           setRateLimitError("Limit request tercapai. Silakan hubungi admin.");
           return false;
@@ -94,6 +120,7 @@ export default function App() {
           requestCount: increment(1),
           lastSeen: Date.now()
         });
+        setRequestCount(prev => prev + 1);
       }
       return true;
     } catch (err) {
@@ -120,7 +147,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   
   const [showSettings, setShowSettings] = useState(false);
-  const [tempApiKey, setTempApiKey] = useState("dedi131");
 
   // Modal state
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
@@ -157,11 +183,7 @@ export default function App() {
   }, [currentView, results]);
 
   useEffect(() => {
-    const savedKey = localStorage.getItem("api_key");
-    if (savedKey) {
-      setApiKey(savedKey);
-      setTempApiKey(savedKey);
-    }
+    // API Key is now fetched from Firebase in the other useEffect
   }, []);
 
   // Re-run search when view changes (if not home)
@@ -170,15 +192,6 @@ export default function App() {
       handleSearch(undefined, apiKey, currentView);
     }
   }, [currentView]);
-
-  const saveSettings = () => {
-    localStorage.setItem("api_key", tempApiKey);
-    setApiKey(tempApiKey);
-    setShowSettings(false);
-    if (currentView !== "home") {
-      handleSearch(undefined, tempApiKey, currentView);
-    }
-  };
 
   const handleSearch = async (e?: React.FormEvent, keyToUse?: string, viewToUse?: "home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo" | "youtube") => {
     if (e) e.preventDefault();
@@ -190,7 +203,7 @@ export default function App() {
     const currentQuery = view === "gimage" ? gimageQuery : view === "tokopedia" ? tokopediaQuery : view === "tiktok" ? tiktokQuery : view === "melolo" ? meloloQuery : view === "youtube" ? youtubeQuery : downloaderQuery;
     
     if (!currentKey) {
-      setShowSettings(true);
+      // Wait for API key to be fetched
       return;
     }
     if (!currentQuery.trim() && view !== "melolo") return;
@@ -465,9 +478,13 @@ export default function App() {
           <button
             onClick={() => setShowSettings(true)}
             className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600"
-            title="Pengaturan"
+            title="Profil Pengguna"
           >
-            <Settings className="w-5 h-5" />
+            {userLimit > 100 ? (
+              <Crown className="w-5 h-5 text-yellow-500" />
+            ) : (
+              <User className="w-5 h-5" />
+            )}
           </button>
         </div>
       </header>
@@ -1283,38 +1300,59 @@ export default function App() {
         </div>
       )}
 
-      {/* Settings Modal */}
+      {/* Profile Modal */}
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Settings className="w-5 h-5 text-gray-500" />
-                Pengaturan API
-              </h2>
-              <button onClick={() => setShowSettings(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+          <div className="bg-white border border-gray-200 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative h-24 bg-gradient-to-r from-indigo-500 to-purple-600">
+              <button 
+                onClick={() => setShowSettings(false)} 
+                className="absolute top-4 right-4 p-1.5 text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 flex flex-col gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  API Key
-                </label>
-                <input
-                  type="text"
-                  value={tempApiKey}
-                  onChange={(e) => setTempApiKey(e.target.value)}
-                  placeholder="Masukkan API Key"
-                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
+            
+            <div className="px-6 pb-6 pt-0 relative text-center">
+              <div className="w-20 h-20 bg-white rounded-full p-1.5 absolute -top-10 left-1/2 -translate-x-1/2 shadow-md">
+                <div className={`w-full h-full rounded-full flex items-center justify-center ${userLimit > 100 ? 'bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-600' : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600'}`}>
+                  {userLimit > 100 ? <Crown className="w-8 h-8" /> : <User className="w-8 h-8" />}
+                </div>
               </div>
+              
+              <div className="mt-14 mb-6">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center justify-center gap-2">
+                  {userLimit > 100 ? 'User Pro' : 'User Free'}
+                  {userLimit > 100 && <Crown className="w-4 h-4 text-yellow-500" />}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {visitorId ? `ID: ${visitorId.substring(0, 15)}...` : 'Memuat ID...'}
+                </p>
+              </div>
+              
+              <div className="bg-gray-50 rounded-2xl p-4 text-left border border-gray-100 mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-600">Penggunaan API</span>
+                  <span className="text-sm font-bold text-gray-900">
+                    {requestCount} / {userLimit === 0 ? '∞' : userLimit}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className={`h-2 rounded-full ${userLimit > 100 ? 'bg-yellow-400' : 'bg-indigo-500'}`} 
+                    style={{ width: `${userLimit === 0 ? 0 : Math.min(100, (requestCount / userLimit) * 100)}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-gray-500 mt-3 text-center">
+                  {userLimit > 100 ? 'Anda memiliki akses premium tanpa batas.' : 'Upgrade ke Pro untuk menghapus batasan harian.'}
+                </p>
+              </div>
+              
               <button
-                onClick={saveSettings}
-                disabled={!tempApiKey.trim()}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                onClick={() => setShowSettings(false)}
+                className="w-full bg-gray-900 hover:bg-black text-white font-medium py-3 rounded-xl transition-colors"
               >
-                Simpan & Lanjutkan
+                Tutup Profil
               </button>
             </div>
           </div>

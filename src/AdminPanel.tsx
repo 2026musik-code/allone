@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Users, Trash2, Edit2, LogOut, Shield, Smartphone, Globe, Clock, Activity } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, signOut, updatePassword, createUserWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
-import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function AdminPanel() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -16,12 +16,16 @@ export default function AdminPanel() {
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [settingsMessage, setSettingsMessage] = useState('');
+  
+  const [globalApiKey, setGlobalApiKey] = useState('');
+  const [apiKeyMessage, setApiKeyMessage] = useState('');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setIsLoggedIn(true);
         fetchUsers();
+        fetchGlobalApiKey();
       } else {
         setIsLoggedIn(false);
         setLoading(false);
@@ -98,6 +102,31 @@ export default function AdminPanel() {
     });
     
     return unsubscribe;
+  };
+
+  const fetchGlobalApiKey = async () => {
+    try {
+      const docRef = doc(db, 'settings', 'global');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setGlobalApiKey(docSnap.data().apiKey || '');
+      }
+    } catch (err) {
+      console.error("Error fetching API key:", err);
+    }
+  };
+
+  const handleUpdateApiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setApiKeyMessage('');
+    try {
+      await setDoc(doc(db, 'settings', 'global'), { apiKey: globalApiKey }, { merge: true });
+      setApiKeyMessage('Berhasil menyimpan API Key.');
+      setTimeout(() => setApiKeyMessage(''), 3000);
+    } catch (err: any) {
+      console.error("Error saving API key:", err);
+      setApiKeyMessage(`Gagal: ${err.message}`);
+    }
   };
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
@@ -290,6 +319,41 @@ export default function AdminPanel() {
                   className="w-full bg-gray-900 hover:bg-black text-white font-medium py-2.5 rounded-xl transition-colors mt-2"
                 >
                   Simpan Perubahan
+                </button>
+              </form>
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-indigo-100 p-2 rounded-xl">
+                  <Globe className="w-5 h-5 text-indigo-700" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">API Key Global</h2>
+              </div>
+              
+              {apiKeyMessage && (
+                <div className={`p-3 rounded-xl text-sm mb-6 text-center border ${apiKeyMessage.includes('Berhasil') ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
+                  {apiKeyMessage}
+                </div>
+              )}
+
+              <form onSubmit={handleUpdateApiKey} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+                  <input
+                    type="text"
+                    value={globalApiKey}
+                    onChange={(e) => setGlobalApiKey(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-sm"
+                    placeholder="Masukkan API Key"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors mt-2 text-sm"
+                >
+                  Simpan API Key
                 </button>
               </form>
             </div>
