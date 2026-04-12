@@ -31,7 +31,16 @@ export default function AdminPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
-      const data = await res.json();
+      
+      let data;
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(`Server tidak mengembalikan JSON. Status: ${res.status}. Response: ${text.substring(0, 50)}...`);
+      }
+
       if (data.success) {
         localStorage.setItem('admin_token', data.token);
         setIsLoggedIn(true);
@@ -39,8 +48,9 @@ export default function AdminPanel() {
       } else {
         setLoginError(data.error || 'Login gagal');
       }
-    } catch (err) {
-      setLoginError('Terjadi kesalahan server');
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setLoginError(`Terjadi kesalahan: ${err.message || String(err)}`);
     }
   };
 
@@ -57,11 +67,15 @@ export default function AdminPanel() {
       const res = await fetch('/api/admin/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) {
+      
+      const contentType = res.headers.get("content-type");
+      if (res.ok && contentType && contentType.indexOf("application/json") !== -1) {
         const data = await res.json();
         setUsers(data.sort((a: any, b: any) => b.lastSeen - a.lastSeen));
       } else if (res.status === 401) {
         handleLogout();
+      } else {
+        console.error("Failed to fetch users. Status:", res.status);
       }
     } catch (err) {
       console.error('Error fetching users:', err);
