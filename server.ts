@@ -2,13 +2,122 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import crypto from "crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// In-memory data store
+interface UserData {
+  ip: string;
+  userAgent: string;
+  lastSeen: number;
+  requestCount: number;
+  limit: number;
+}
+const users = new Map<string, UserData>();
+let adminCredentials = { username: 'admin', password: 'password' };
+let adminToken = crypto.randomBytes(16).toString('hex');
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  app.use(express.json());
+
+  // Tracking and Rate Limiting Middleware
+  app.use((req, res, next) => {
+    // Skip static files and vite internal
+    if (req.path.startsWith('/@') || req.path.startsWith('/src') || req.path.startsWith('/node_modules') || req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg)$/)) {
+      return next();
+    }
+    
+    let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    if (Array.isArray(ip)) ip = ip[0];
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const key = ip as string;
+
+    if (!users.has(key)) {
+      users.set(key, { ip: key, userAgent, lastSeen: Date.now(), requestCount: 0, limit: 100 });
+    }
+    
+    const user = users.get(key)!;
+    user.lastSeen = Date.now();
+    user.userAgent = userAgent;
+    
+    // Only count API requests towards the limit (exclude admin API)
+    if (req.path.startsWith('/api/') && !req.path.startsWith('/api/admin')) {
+      user.requestCount++;
+      if (user.limit > 0 && user.requestCount > user.limit) {
+        return res.status(429).json({ error: "Limit request tercapai. Silakan hubungi admin." });
+      }
+    }
+    
+    next();
+  });
+
+  // Admin API Routes
+  app.post("/api/admin/login", (req, res) => {
+    const { username, password } = req.body;
+    if (username === adminCredentials.username && password === adminCredentials.password) {
+      res.json({ success: true, token: adminToken });
+    } else {
+      res.status(401).json({ success: false, error: "Username atau password salah" });
+    }
+  });
+
+  // Middleware to check admin token
+  const requireAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token === adminToken) {
+      next();
+    } else {
+      res.status(401).json({ error: "Unauthorized" });
+    }
+  };
+
+  app.get("/api/admin/users", requireAdmin, (req, res) => {
+    // Clean up old users (not seen in 24 hours)
+    const now = Date.now();
+    for (const [key, user] of users.entries()) {
+      if (now - user.lastSeen > 24 * 60 * 60 * 1000) {
+        users.delete(key);
+      }
+    }
+    res.json(Array.from(users.values()));
+  });
+
+  app.post("/api/admin/users/limit", requireAdmin, (req, res) => {
+    const { ip, limit } = req.body;
+    if (users.has(ip)) {
+      users.get(ip)!.limit = Number(limit);
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: "User not found" });
+    }
+  });
+
+  app.post("/api/admin/users/delete", requireAdmin, (req, res) => {
+    const { ip } = req.body;
+    if (users.has(ip)) {
+      users.delete(ip);
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: "User not found" });
+    }
+  });
+
+  app.post("/api/admin/settings", requireAdmin, (req, res) => {
+    const { username, password } = req.body;
+    if (username && password) {
+      adminCredentials = { username, password };
+      // Generate new token to force re-login
+      adminToken = crypto.randomBytes(16).toString('hex');
+      res.json({ success: true });
+    } else {
+      res.status(400).json({ error: "Username and password are required" });
+    }
+  });
 
   // API Routes
   app.get("/api/gimage", async (req, res) => {

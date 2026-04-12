@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video, Youtube } from "lucide-react";
+import AdminPanel from "./AdminPanel";
 
 const ImageWithFallback = ({ src, alt, className }: { src: string, alt: string, className: string }) => {
   const [errorCount, setErrorCount] = useState(0);
@@ -30,6 +31,11 @@ const ImageWithFallback = ({ src, alt, className }: { src: string, alt: string, 
 };
 
 export default function App() {
+  // Simple routing
+  if (window.location.pathname === '/admin') {
+    return <AdminPanel />;
+  }
+
   const [apiKey, setApiKey] = useState("dedi131");
   const [currentView, setCurrentView] = useState<"home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo" | "youtube">("home");
   
@@ -46,6 +52,7 @@ export default function App() {
   const [downloaderResult, setDownloaderResult] = useState<any>(null);
   const [meloloDetail, setMeloloDetail] = useState<any>(null);
   const [youtubeDetail, setYoutubeDetail] = useState<any>(null);
+  const [tiktokActiveVideo, setTiktokActiveVideo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -135,6 +142,7 @@ export default function App() {
         setMeloloCategoriesData([]);
         setMeloloDetail(null);
         setYoutubeDetail(null);
+        setTiktokActiveVideo(null);
       }
 
       let data: any;
@@ -376,6 +384,7 @@ export default function App() {
               setCurrentView("home");
               setYoutubeDetail(null);
               setMeloloDetail(null);
+              setTiktokActiveVideo(null);
             }}>
               <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-1.5 rounded-lg text-white shadow-sm">
                 <LayoutGrid className="w-5 h-5" />
@@ -634,21 +643,72 @@ export default function App() {
 
             {/* TikTok Feed View */}
             {!loading && currentView === "tiktok" && results.length > 0 && (
-              <div className="max-w-md mx-auto w-full h-[75vh] bg-black rounded-3xl overflow-y-scroll snap-y snap-mandatory shadow-2xl border-4 border-gray-900 hide-scrollbar relative">
-                {results.map((videoUrl, idx) => (
-                  <div key={idx} className="w-full h-full snap-start snap-always relative flex items-center justify-center bg-black tiktok-video-container">
-                    <video 
-                      src={videoUrl} 
-                      controls 
-                      controlsList="nodownload"
-                      className="w-full h-full object-contain"
-                      preload={idx === 0 ? "auto" : "metadata"}
-                      loop
-                      playsInline
-                      poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Crect width='100%25' height='100%25' fill='black'/%3E%3C/svg%3E"
-                    />
+              <div className="flex flex-col gap-4 -mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                
+                {/* Main Vertical Feed */}
+                <div className="max-w-md mx-auto w-full h-[65vh] bg-black rounded-3xl overflow-y-scroll snap-y snap-mandatory shadow-2xl border-4 border-gray-900 hide-scrollbar relative">
+                  {results.map((videoUrl, idx) => (
+                    <div key={idx} className="w-full h-full snap-start snap-always relative flex items-center justify-center bg-black tiktok-video-container">
+                      <video 
+                        src={videoUrl} 
+                        controls 
+                        controlsList="nodownload"
+                        className="w-full h-full object-contain"
+                        preload={idx === 0 ? "auto" : "metadata"}
+                        loop
+                        playsInline
+                        poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Crect width='100%25' height='100%25' fill='black'/%3E%3C/svg%3E"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Recommendations (2 rows, horizontal scroll) */}
+                <div className="bg-white p-5 md:p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col gap-4">
+                  <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <Video className="w-6 h-6 text-black" />
+                    Rekomendasi Video
+                  </h3>
+                  <div 
+                    className="grid grid-rows-2 grid-flow-col gap-4 overflow-x-auto pb-2 snap-x hide-scrollbar"
+                    style={{ gridAutoColumns: "minmax(120px, 1fr)" }}
+                  >
+                    {[...results].reverse().map((videoUrl, idx) => (
+                      <div 
+                        key={idx}
+                        onClick={() => {
+                          // Find the video in the main feed and scroll to it
+                          const originalIdx = results.indexOf(videoUrl);
+                          const container = document.querySelector('.max-w-md.overflow-y-scroll');
+                          const videoElements = container?.querySelectorAll('.tiktok-video-container');
+                          if (container && videoElements && videoElements[originalIdx]) {
+                            container.scrollTo({
+                              top: (videoElements[originalIdx] as HTMLElement).offsetTop,
+                              behavior: 'smooth'
+                            });
+                          }
+                        }}
+                        className="bg-black rounded-xl overflow-hidden aspect-[9/16] cursor-pointer hover:ring-2 hover:ring-black transition-all relative group snap-start w-[120px] sm:w-[140px]"
+                      >
+                        <video 
+                          src={videoUrl} 
+                          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                          preload="metadata"
+                          muted
+                          playsInline
+                          onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.pause();
+                            e.currentTarget.currentTime = 0;
+                          }}
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Play className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
             )}
 
@@ -759,9 +819,11 @@ export default function App() {
               <div className="flex flex-col gap-4 -mt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <button 
                   onClick={() => setMeloloDetail(null)}
-                  className="flex items-center gap-2 text-gray-600 hover:text-purple-600 font-medium w-fit transition-colors"
+                  className="group flex items-center gap-3 bg-white hover:bg-purple-50 border border-gray-200 hover:border-purple-200 text-gray-700 hover:text-purple-700 px-5 py-2.5 rounded-full font-semibold text-sm transition-all shadow-sm hover:shadow-md w-fit"
                 >
-                  <X className="w-5 h-5" />
+                  <div className="bg-purple-100 text-purple-600 p-1 rounded-full group-hover:bg-purple-200 transition-colors">
+                    <Play className="w-4 h-4" />
+                  </div>
                   Kembali ke Hasil Pencarian
                 </button>
                 
@@ -902,12 +964,14 @@ export default function App() {
 
             {/* YouTube Detail View */}
             {!loading && currentView === "youtube" && youtubeDetail && (
-              <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex flex-col gap-4 -mt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <button 
                   onClick={() => setYoutubeDetail(null)}
-                  className="flex items-center gap-2 text-gray-600 hover:text-red-600 font-medium w-fit transition-colors"
+                  className="group flex items-center gap-3 bg-white hover:bg-red-50 border border-gray-200 hover:border-red-200 text-gray-700 hover:text-red-700 px-5 py-2.5 rounded-full font-semibold text-sm transition-all shadow-sm hover:shadow-md w-fit"
                 >
-                  <X className="w-5 h-5" />
+                  <div className="bg-red-100 text-red-600 p-1 rounded-full group-hover:bg-red-200 transition-colors">
+                    <Youtube className="w-4 h-4" />
+                  </div>
                   Kembali ke Hasil Pencarian
                 </button>
                 
@@ -1082,7 +1146,7 @@ export default function App() {
               </div>
             )}
 
-            {!loading && !error && currentView !== "downloader" && results.length === 0 && meloloCategoriesData.length === 0 && !meloloDetail && !youtubeDetail && (
+            {!loading && !error && currentView !== "downloader" && results.length === 0 && meloloCategoriesData.length === 0 && !meloloDetail && !youtubeDetail && !tiktokActiveVideo && (
               <div className="text-center py-20 text-gray-500 animate-in fade-in">
                 {currentView === "gimage" ? (
                   <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
