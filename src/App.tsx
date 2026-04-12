@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video, Youtube } from "lucide-react";
 import AdminPanel from "./AdminPanel";
+import { db } from './firebase';
+import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
 
 const ImageWithFallback = ({ src, alt, className }: { src: string, alt: string, className: string }) => {
   const [errorCount, setErrorCount] = useState(0);
@@ -39,6 +41,67 @@ export default function App() {
   const [apiKey, setApiKey] = useState("dedi131");
   const [currentView, setCurrentView] = useState<"home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo" | "youtube">("home");
   
+  // Rate limiting state
+  const [visitorId, setVisitorId] = useState<string | null>(null);
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initVisitor = async () => {
+      try {
+        // Get IP
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        const ip = data.ip;
+        const id = ip.replace(/\./g, '_').replace(/:/g, '_');
+        setVisitorId(id);
+
+        const docRef = doc(db, 'visitors', id);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+          await setDoc(docRef, {
+            ip,
+            userAgent: navigator.userAgent,
+            lastSeen: Date.now(),
+            requestCount: 0,
+            limit: 100
+          });
+        } else {
+          await updateDoc(docRef, {
+            lastSeen: Date.now(),
+            userAgent: navigator.userAgent
+          });
+        }
+      } catch (err) {
+        console.error("Error initializing visitor tracking:", err);
+      }
+    };
+    initVisitor();
+  }, []);
+
+  const checkRateLimit = async (): Promise<boolean> => {
+    if (!visitorId) return true; // Fail open if tracking fails
+    try {
+      const docRef = doc(db, 'visitors', visitorId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.limit > 0 && data.requestCount >= data.limit) {
+          setRateLimitError("Limit request tercapai. Silakan hubungi admin.");
+          return false;
+        }
+        await updateDoc(docRef, {
+          requestCount: increment(1),
+          lastSeen: Date.now()
+        });
+      }
+      return true;
+    } catch (err) {
+      console.error("Error checking rate limit:", err);
+      return true;
+    }
+  };
+
   // Separate query states for each tab
   const [gimageQuery, setGimageQuery] = useState("Cewek cantik");
   const [tokopediaQuery, setTokopediaQuery] = useState("hp");
@@ -131,6 +194,10 @@ export default function App() {
       return;
     }
     if (!currentQuery.trim() && view !== "melolo") return;
+
+    setRateLimitError(null);
+    const canProceed = await checkRateLimit();
+    if (!canProceed) return;
 
     try {
       setLoading(true);

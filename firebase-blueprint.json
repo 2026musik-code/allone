@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "Visitor": {
+      "title": "Visitor",
+      "description": "Tracks online users, their IP, user agent, and API request limits.",
+      "type": "object",
+      "properties": {
+        "ip": {
+          "type": "string",
+          "description": "The IP address of the visitor."
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "The User-Agent string of the visitor's browser."
+        },
+        "lastSeen": {
+          "type": "number",
+          "description": "Timestamp (ms) of the last activity."
+        },
+        "requestCount": {
+          "type": "number",
+          "description": "Number of API requests made."
+        },
+        "limit": {
+          "type": "number",
+          "description": "Maximum allowed requests (0 for unlimited)."
+        }
+      },
+      "required": ["ip", "userAgent", "lastSeen", "requestCount", "limit"]
+    }
+  },
+  "firestore": {
+    "/visitors/{visitorId}": {
+      "schema": {
+        "$ref": "#/entities/Visitor"
+      },
+      "description": "Collection of visitors for tracking and rate limiting."
+    }
+  }
+}

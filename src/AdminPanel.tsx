@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Users, Trash2, Edit2, LogOut, Shield, Smartphone, Globe, Clock, Activity } from 'lucide-react';
+import { auth, db } from './firebase';
+import { signInWithEmailAndPassword, signOut, updatePassword, createUserWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
 
 export default function AdminPanel() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -8,157 +11,137 @@ export default function AdminPanel() {
   const [loginError, setLoginError] = useState('');
   
   const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [settingsMessage, setSettingsMessage] = useState('');
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    if (token) {
-      setIsLoggedIn(true);
-      fetchUsers(token);
-    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsLoggedIn(true);
+        fetchUsers();
+      } else {
+        setIsLoggedIn(false);
+        setLoading(false);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
     try {
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      
-      let data;
-      const contentType = res.headers.get("content-type");
-      if (contentType && contentType.indexOf("application/json") !== -1) {
-        data = await res.json();
-      } else {
-        const text = await res.text();
-        throw new Error(`Server tidak mengembalikan JSON. Status: ${res.status}. Response: ${text.substring(0, 50)}...`);
-      }
-
-      if (data.success) {
-        localStorage.setItem('admin_token', data.token);
-        setIsLoggedIn(true);
-        fetchUsers(data.token);
-      } else {
-        setLoginError(data.error || 'Login gagal');
-      }
+      const email = `${username.toLowerCase()}@admin.com`;
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
       console.error("Login error:", err);
-      setLoginError(`Terjadi kesalahan: ${err.message || String(err)}`);
+      // If user not found, maybe it's the first time? Let's create the default admin if it doesn't exist
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        if (username === 'admin' && password === 'password') {
+          try {
+            await createUserWithEmailAndPassword(auth, 'admin@admin.com', 'password');
+            return;
+          } catch (createErr: any) {
+            setLoginError(`Gagal membuat admin default: ${createErr.message}`);
+            return;
+          }
+        }
+      }
+      setLoginError(`Username atau password salah`);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    setIsLoggedIn(false);
-    setUsername('');
-    setPassword('');
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setUsername('');
+      setPassword('');
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
   };
 
-  const fetchUsers = async (token: string) => {
+  const fetchUsers = () => {
     setLoading(true);
-    try {
-      const res = await fetch('/api/admin/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
+    const q = query(collection(db, 'visitors'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const usersData: any[] = [];
+      const now = Date.now();
+      
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        // Auto cleanup old users (> 24 hours)
+        if (now - data.lastSeen > 24 * 60 * 60 * 1000) {
+          deleteDoc(doc(db, 'visitors', docSnap.id)).catch(console.error);
+        } else {
+          usersData.push({ id: docSnap.id, ...data });
+        }
       });
       
-      const contentType = res.headers.get("content-type");
-      if (res.ok && contentType && contentType.indexOf("application/json") !== -1) {
-        const data = await res.json();
-        setUsers(data.sort((a: any, b: any) => b.lastSeen - a.lastSeen));
-      } else if (res.status === 401) {
-        handleLogout();
-      } else {
-        console.error("Failed to fetch users. Status:", res.status);
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err);
-    } finally {
+      setUsers(usersData.sort((a, b) => b.lastSeen - a.lastSeen));
       setLoading(false);
-    }
+    }, (error) => {
+      console.error("Error fetching users:", error);
+      setLoading(false);
+    });
+    
+    return unsubscribe;
   };
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSettingsMessage('');
-    const token = localStorage.getItem('admin_token');
-    if (!token) return;
+    
+    if (!auth.currentUser) return;
 
     try {
-      const res = await fetch('/api/admin/settings', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ username: newUsername, password: newPassword })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSettingsMessage('Berhasil mengubah kredensial. Silakan login kembali.');
-        setTimeout(() => {
-          handleLogout();
-        }, 2000);
-      } else {
-        setSettingsMessage(data.error || 'Gagal mengubah pengaturan');
+      if (newPassword) {
+        await updatePassword(auth.currentUser, newPassword);
       }
-    } catch (err) {
-      setSettingsMessage('Terjadi kesalahan server');
+      
+      // Note: Changing username (email) requires re-authentication in Firebase if it's been a while.
+      // For simplicity, we only update password here, or we can show a message.
+      if (newUsername && newUsername !== auth.currentUser.email?.split('@')[0]) {
+         setSettingsMessage('Maaf, mengubah username saat ini belum didukung. Silakan ubah password saja.');
+         return;
+      }
+
+      setSettingsMessage('Berhasil mengubah pengaturan. Silakan login kembali.');
+      setNewPassword('');
+      setTimeout(() => {
+        handleLogout();
+      }, 2000);
+    } catch (err: any) {
+      console.error("Settings error:", err);
+      setSettingsMessage(`Gagal: ${err.message}`);
     }
   };
 
-  const handleSetLimit = async (ip: string) => {
-    const limitStr = prompt('Masukkan limit request baru (0 untuk tanpa batas):', '100');
+  const handleSetLimit = async (id: string, currentLimit: number) => {
+    const limitStr = prompt('Masukkan limit request baru (0 untuk tanpa batas):', currentLimit.toString());
     if (limitStr === null) return;
     const limit = parseInt(limitStr);
     if (isNaN(limit)) return alert('Limit harus berupa angka');
 
-    const token = localStorage.getItem('admin_token');
-    if (!token) return;
-
     try {
-      const res = await fetch('/api/admin/users/limit', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ ip, limit })
-      });
-      if (res.ok) {
-        fetchUsers(token);
-      }
+      await updateDoc(doc(db, 'visitors', id), { limit });
     } catch (err) {
       console.error('Error setting limit:', err);
+      alert('Gagal mengubah limit');
     }
   };
 
-  const handleDeleteUser = async (ip: string) => {
+  const handleDeleteUser = async (id: string, ip: string) => {
     if (!confirm(`Yakin ingin menghapus/memblokir user dengan IP ${ip}?`)) return;
 
-    const token = localStorage.getItem('admin_token');
-    if (!token) return;
-
     try {
-      const res = await fetch('/api/admin/users/delete', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ ip })
-      });
-      if (res.ok) {
-        fetchUsers(token);
-      }
+      await deleteDoc(doc(db, 'visitors', id));
     } catch (err) {
       console.error('Error deleting user:', err);
+      alert('Gagal menghapus user');
     }
   };
 
@@ -242,13 +225,6 @@ export default function AdminPanel() {
             </div>
           </div>
           <div className="flex gap-3 w-full sm:w-auto">
-            <button 
-              onClick={() => fetchUsers(localStorage.getItem('admin_token')!)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors"
-            >
-              <Activity className="w-4 h-4" />
-              Refresh
-            </button>
             <button 
               onClick={handleLogout}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors"
@@ -382,7 +358,7 @@ export default function AdminPanel() {
                         <td className="p-4">
                           <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => handleSetLimit(user.ip)}
+                              onClick={() => handleSetLimit(user.id, user.limit)}
                               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-medium transition-colors"
                               title="Atur Limit Request"
                             >
@@ -390,7 +366,7 @@ export default function AdminPanel() {
                               <span className="hidden sm:inline">Limit</span>
                             </button>
                             <button
-                              onClick={() => handleDeleteUser(user.ip)}
+                              onClick={() => handleDeleteUser(user.id, user.ip)}
                               className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-medium transition-colors"
                               title="Hapus / Blokir User"
                             >
