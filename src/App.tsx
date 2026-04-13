@@ -1272,7 +1272,9 @@ export default function App() {
       {/* Video Modal */}
       {activeVideoUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200">
-          <div className="relative w-full h-full md:h-auto md:max-h-[90vh] md:max-w-4xl bg-black md:rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+          <div className={`relative w-full h-full md:h-auto bg-black md:rounded-2xl overflow-hidden flex flex-col shadow-2xl mx-auto ${
+            currentView === 'tiktok' ? 'md:max-w-sm md:aspect-[9/16]' : 'md:max-w-4xl md:aspect-video'
+          }`}>
             {/* Modal Header */}
             <div className="absolute top-0 left-0 right-0 z-10 flex justify-end p-4 bg-gradient-to-b from-black/80 to-transparent">
               <button 
@@ -1280,7 +1282,7 @@ export default function App() {
                   setActiveVideoUrl(null);
                   setActiveEpisodeIndex(null);
                 }}
-                className="bg-white dark:bg-gray-800/10 hover:bg-white dark:bg-gray-800/20 text-white p-2 rounded-full backdrop-blur-md transition-colors"
+                className="bg-white/20 hover:bg-white/40 text-white p-2 rounded-full backdrop-blur-md transition-colors"
                 title="Tutup Video"
               >
                 <X className="w-6 h-6" />
@@ -1292,7 +1294,7 @@ export default function App() {
               {activeVideoType === "iframe" ? (
                 <iframe 
                   src={activeVideoUrl} 
-                  className="w-full h-full min-h-[100dvh] md:min-h-[60vh] border-0"
+                  className="w-full h-full border-0"
                   allowFullScreen
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 ></iframe>
@@ -1304,7 +1306,7 @@ export default function App() {
                   playsInline
                   referrerPolicy="no-referrer"
                   onEnded={handleVideoEnded}
-                  className="w-full h-full max-h-[100dvh] md:max-h-[80vh] object-contain"
+                  className="w-full h-full object-contain"
                 />
               )}
             </div>

@@ -4,8 +4,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import crypto from "crypto";
 
-const __filename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
-const __dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(__filename);
+const _filename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
+const _dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(_filename);
 
 // In-memory data store
 interface UserData {
