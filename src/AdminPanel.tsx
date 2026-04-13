@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Trash2, Edit2, LogOut, Shield, Smartphone, Globe, Clock, Activity } from 'lucide-react';
+import { Settings, Users, Trash2, Edit2, LogOut, Shield, Smartphone, Globe, Clock, Activity, Moon, Sun } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, signOut, updatePassword, createUserWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
+import { useTheme } from './hooks/useTheme';
 
 export default function AdminPanel() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -19,6 +20,8 @@ export default function AdminPanel() {
   
   const [globalApiKey, setGlobalApiKey] = useState('');
   const [apiKeyMessage, setApiKeyMessage] = useState('');
+  
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -197,14 +200,14 @@ export default function AdminPanel() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border border-gray-100">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-800">
           <div className="flex justify-center mb-6">
             <div className="bg-blue-100 p-3 rounded-2xl">
               <Shield className="w-8 h-8 text-blue-600" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-center text-gray-900 mb-8">Admin Login</h1>
+          <h1 className="text-2xl font-bold text-center text-gray-900 dark:text-gray-100 mb-8">Admin Login</h1>
           
           {loginError && (
             <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm mb-6 text-center border border-red-100">
@@ -214,23 +217,23 @@ export default function AdminPanel() {
 
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Username</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 placeholder="Masukkan username"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 placeholder="Masukkan password"
                 required
               />
@@ -248,24 +251,31 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8 font-sans">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8 font-sans transition-colors duration-200">
       <div className="max-w-6xl mx-auto flex flex-col gap-8">
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
           <div className="flex items-center gap-4">
-            <div className="bg-blue-100 p-3 rounded-2xl">
-              <Shield className="w-6 h-6 text-blue-600" />
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-2xl">
+              <Shield className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-sm text-gray-500">Kelola pengguna dan pengaturan sistem</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Admin Dashboard</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Kelola pengguna dan pengaturan sistem</p>
             </div>
           </div>
           <div className="flex gap-3 w-full sm:w-auto">
+            <button
+              onClick={toggleTheme}
+              className="flex items-center justify-center p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-xl transition-colors"
+              title="Ganti Tema"
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
             <button 
               onClick={handleLogout}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-xl font-medium transition-colors"
             >
               <LogOut className="w-4 h-4" />
               Keluar
@@ -277,12 +287,12 @@ export default function AdminPanel() {
           
           {/* Box 1: Settings */}
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-3 mb-6">
-                <div className="bg-gray-100 p-2 rounded-xl">
-                  <Settings className="w-5 h-5 text-gray-700" />
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-xl">
+                  <Settings className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">Pengaturan Admin</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Pengaturan Admin</h2>
               </div>
               
               {settingsMessage && (
@@ -293,23 +303,23 @@ export default function AdminPanel() {
 
               <form onSubmit={handleUpdateSettings} className="flex flex-col gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Username Baru</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Username Baru</label>
                   <input
                     type="text"
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
                     placeholder="Username baru"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Password Baru</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password Baru</label>
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
                     placeholder="Password baru"
                     required
                   />
@@ -323,12 +333,12 @@ export default function AdminPanel() {
               </form>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-3 mb-6">
                 <div className="bg-indigo-100 p-2 rounded-xl">
                   <Globe className="w-5 h-5 text-indigo-700" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">API Key Global</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">API Key Global</h2>
               </div>
               
               {apiKeyMessage && (
@@ -339,12 +349,12 @@ export default function AdminPanel() {
 
               <form onSubmit={handleUpdateApiKey} className="flex flex-col gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">API Key</label>
                   <input
                     type="text"
                     value={globalApiKey}
                     onChange={(e) => setGlobalApiKey(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-sm"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-sm"
                     placeholder="Masukkan API Key"
                     required
                   />
@@ -369,28 +379,28 @@ export default function AdminPanel() {
           </div>
 
           {/* Box 2: Online Users List */}
-          <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="bg-green-100 p-2 rounded-xl">
                   <Users className="w-5 h-5 text-green-600" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">Daftar User Online</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Daftar User Online</h2>
               </div>
-              <span className="bg-gray-100 text-gray-600 text-xs font-bold px-3 py-1 rounded-full">
+              <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold px-3 py-1 rounded-full">
                 {users.length} User
               </span>
             </div>
 
             <div className="p-0 overflow-x-auto">
               {loading ? (
-                <div className="p-8 text-center text-gray-500">Memuat data...</div>
+                <div className="p-8 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">Memuat data...</div>
               ) : users.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">Belum ada user online.</div>
+                <div className="p-8 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">Belum ada user online.</div>
               ) : (
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                    <tr className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider">
                       <th className="p-4 font-semibold">User Info</th>
                       <th className="p-4 font-semibold">Aktivitas</th>
                       <th className="p-4 font-semibold text-right">Aksi</th>
@@ -398,19 +408,19 @@ export default function AdminPanel() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {users.map((user, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                      <tr key={idx} className="hover:bg-gray-50 dark:bg-gray-900 transition-colors">
                         <td className="p-4">
                           <div className="flex items-start gap-3">
-                            <div className="bg-gray-100 p-2 rounded-lg shrink-0 mt-1">
+                            <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg shrink-0 mt-1">
                               {getDeviceType(user.userAgent) === 'Mobile' ? (
-                                <Smartphone className="w-4 h-4 text-gray-600" />
+                                <Smartphone className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                               ) : (
-                                <Globe className="w-4 h-4 text-gray-600" />
+                                <Globe className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                               )}
                             </div>
                             <div>
-                              <div className="font-mono text-sm font-semibold text-gray-900">{user.ip}</div>
-                              <div className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-[200px]" title={user.userAgent}>
+                              <div className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">{user.ip}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1 line-clamp-2 max-w-[200px]" title={user.userAgent}>
                                 {user.userAgent}
                               </div>
                             </div>
@@ -418,11 +428,11 @@ export default function AdminPanel() {
                         </td>
                         <td className="p-4">
                           <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
                               <Activity className="w-3.5 h-3.5 text-blue-500" />
                               <span className="font-medium">{user.requestCount}</span> / {user.limit === 0 ? '∞' : user.limit} req
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
                               <Clock className="w-3.5 h-3.5" />
                               {formatTime(user.lastSeen)}
                             </div>

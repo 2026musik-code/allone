@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video, Youtube, Shield, User, Crown } from "lucide-react";
+import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video, Youtube, Shield, User, Crown, Moon, Sun } from "lucide-react";
 import AdminPanel from "./AdminPanel";
 import { db } from './firebase';
 import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
+import { useTheme } from './hooks/useTheme';
 
 const ImageWithFallback = ({ src, alt, className }: { src: string, alt: string, className: string }) => {
   const [errorCount, setErrorCount] = useState(0);
 
   if (!src || errorCount >= 2) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100">
-        <ImageIcon className="w-8 h-8 text-gray-400" />
+      <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+        <ImageIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
       </div>
     );
   }
@@ -46,6 +47,8 @@ export default function App() {
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [userLimit, setUserLimit] = useState<number>(100);
   const [requestCount, setRequestCount] = useState<number>(0);
+  
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     const fetchGlobalApiKey = async () => {
@@ -435,9 +438,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans selection:bg-indigo-500/30 transition-colors duration-200">
       {/* Navbar */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm">
+      <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             {currentView !== "home" && (
@@ -448,12 +451,12 @@ export default function App() {
                   setMeloloDetail(null);
                 }}
                 className={`p-2 rounded-full transition-colors ${
-                  currentView === "gimage" ? "hover:bg-pink-100 text-pink-600" :
-                  currentView === "tokopedia" ? "hover:bg-green-100 text-green-600" :
-                  currentView === "tiktok" ? "hover:bg-gray-200 text-black" :
-                  currentView === "melolo" ? "hover:bg-purple-100 text-purple-600" :
-                  currentView === "youtube" ? "hover:bg-red-100 text-red-600" :
-                  "hover:bg-blue-100 text-blue-600"
+                  currentView === "gimage" ? "hover:bg-pink-100 dark:hover:bg-pink-900/30 text-pink-600 dark:text-pink-400" :
+                  currentView === "tokopedia" ? "hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400" :
+                  currentView === "tiktok" ? "hover:bg-gray-200 dark:hover:bg-gray-800 text-black dark:text-white" :
+                  currentView === "melolo" ? "hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400" :
+                  currentView === "youtube" ? "hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400" :
+                  "hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400"
                 }`}
                 title="Kembali ke Beranda"
               >
@@ -469,23 +472,32 @@ export default function App() {
               <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-1.5 rounded-lg text-white shadow-sm">
                 <LayoutGrid className="w-5 h-5" />
               </div>
-              <h1 className="text-xl font-bold tracking-tight text-gray-900">
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
                 ALL IN ONE
               </h1>
             </div>
           </div>
 
-          <button
-            onClick={() => setShowSettings(true)}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600"
-            title="Profil Pengguna"
-          >
-            {userLimit > 100 ? (
-              <Crown className="w-5 h-5 text-yellow-500" />
-            ) : (
-              <User className="w-5 h-5" />
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300"
+              title="Ganti Tema"
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300"
+              title="Profil Pengguna"
+            >
+              {userLimit > 100 ? (
+                <Crown className="w-5 h-5 text-yellow-500" />
+              ) : (
+                <User className="w-5 h-5" />
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -495,92 +507,92 @@ export default function App() {
         {currentView === "home" && (
           <div className="w-full max-w-5xl mx-auto mt-4 md:mt-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-10">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight mb-4">Selamat Datang di ALL IN ONE</h2>
-              <p className="text-lg text-gray-500 max-w-2xl mx-auto">Pilih fitur yang ingin Anda gunakan dari menu di bawah ini. Semua kebutuhan pencarian Anda dalam satu tempat.</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight mb-4">Selamat Datang di ALL IN ONE</h2>
+              <p className="text-lg text-gray-500 dark:text-gray-400 dark:text-gray-500 max-w-2xl mx-auto">Pilih fitur yang ingin Anda gunakan dari menu di bawah ini. Semua kebutuhan pencarian Anda dalam satu tempat.</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
               {/* Box 1: GImage */}
               <div 
                 onClick={() => setCurrentView("gimage")} 
-                className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-pink-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
+                className="bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl hover:border-pink-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
               >
                 <div className="w-20 h-20 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-pink-100 transition-all duration-300">
                   <ImageIcon className="w-10 h-10" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Pencarian Gambar</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">Cari gambar dan putar video dari berbagai sumber termasuk TikTok dengan mudah.</p>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Pencarian Gambar</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 leading-relaxed">Cari gambar dan putar video dari berbagai sumber termasuk TikTok dengan mudah.</p>
                 </div>
               </div>
 
               {/* Box 2: Tokopedia */}
               <div 
                 onClick={() => setCurrentView("tokopedia")} 
-                className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-green-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
+                className="bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl hover:border-green-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
               >
                 <div className="w-20 h-20 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-green-100 transition-all duration-300">
                   <ShoppingBag className="w-10 h-10" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Tokopedia</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">Cari produk, cek harga, dan temukan toko terbaik dari Tokopedia secara langsung.</p>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Tokopedia</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 leading-relaxed">Cari produk, cek harga, dan temukan toko terbaik dari Tokopedia secara langsung.</p>
                 </div>
               </div>
 
               {/* Box 3: Downloader */}
               <div 
                 onClick={() => setCurrentView("downloader")} 
-                className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-blue-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
+                className="bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl hover:border-blue-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
               >
                 <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-100 transition-all duration-300">
                   <Download className="w-10 h-10" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Downloader</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">Download video atau media dari berbagai platform (TikTok, dll) tanpa watermark.</p>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Downloader</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 leading-relaxed">Download video atau media dari berbagai platform (TikTok, dll) tanpa watermark.</p>
                 </div>
               </div>
 
               {/* Box 4: TikTok Search */}
               <div 
                 onClick={() => setCurrentView("tiktok")} 
-                className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-black cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
+                className="bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl hover:border-black cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
               >
-                <div className="w-20 h-20 bg-gray-100 text-black rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-gray-200 transition-all duration-300">
+                <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 text-black rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-gray-200 dark:bg-gray-700 transition-all duration-300">
                   <Video className="w-10 h-10" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">TikTok Feed</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">Cari dan tonton video TikTok dengan pengalaman scroll vertikal seperti di aplikasinya.</p>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">TikTok Feed</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 leading-relaxed">Cari dan tonton video TikTok dengan pengalaman scroll vertikal seperti di aplikasinya.</p>
                 </div>
               </div>
 
               {/* Box 5: Melolo */}
               <div 
                 onClick={() => setCurrentView("melolo")} 
-                className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-purple-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
+                className="bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl hover:border-purple-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
               >
                 <div className="w-20 h-20 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-100 transition-all duration-300">
                   <Play className="w-10 h-10" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Melolo</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">Cari dan tonton berbagai film serta serial favorit Anda dengan mudah.</p>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Melolo</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 leading-relaxed">Cari dan tonton berbagai film serta serial favorit Anda dengan mudah.</p>
                 </div>
               </div>
 
               {/* Box 6: Youtube */}
               <div 
                 onClick={() => setCurrentView("youtube")} 
-                className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-red-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
+                className="bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl hover:border-red-300 cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-5 group transform hover:-translate-y-1"
               >
                 <div className="w-20 h-20 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-red-100 transition-all duration-300">
                   <Youtube className="w-10 h-10" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">YouTube</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">Cari dan tonton video YouTube favorit Anda tanpa iklan yang mengganggu.</p>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">YouTube</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 leading-relaxed">Cari dan tonton video YouTube favorit Anda tanpa iklan yang mengganggu.</p>
                 </div>
               </div>
             </div>
@@ -604,7 +616,7 @@ export default function App() {
                   else setDownloaderQuery(e.target.value);
                 }}
                 placeholder={currentView === "gimage" ? "Cari gambar atau video..." : currentView === "tokopedia" ? "Cari produk di Tokopedia..." : currentView === "tiktok" ? "Cari video TikTok..." : currentView === "melolo" ? "Cari film atau serial..." : currentView === "youtube" ? "Cari video YouTube..." : "Masukkan link video (TikTok, dll)..."}
-                className={`w-full bg-white border border-gray-300 rounded-2xl py-4 pl-5 pr-14 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all shadow-sm ${
+                className={`w-full bg-white dark:bg-gray-800 border border-gray-300 rounded-2xl py-4 pl-5 pr-14 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all shadow-sm ${
                   currentView === "gimage" ? "focus:ring-pink-500" : currentView === "tokopedia" ? "focus:ring-green-500" : currentView === "tiktok" ? "focus:ring-black" : currentView === "melolo" ? "focus:ring-purple-500" : currentView === "youtube" ? "focus:ring-red-500" : "focus:ring-blue-500"
                 }`}
               />
@@ -629,11 +641,11 @@ export default function App() {
 
             {/* Downloader Result */}
             {!loading && currentView === "downloader" && downloaderResult && (
-              <div className="max-w-2xl mx-auto w-full bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="max-w-2xl mx-auto w-full bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex flex-col md:flex-row">
                   {/* Thumbnail */}
                   <div 
-                    className="w-full md:w-2/5 aspect-square md:aspect-auto bg-gray-100 relative group cursor-pointer"
+                    className="w-full md:w-2/5 aspect-square md:aspect-auto bg-gray-100 dark:bg-gray-800 relative group cursor-pointer"
                     onClick={() => {
                       const videoUrl = getDownloaderVideoUrl(downloaderResult);
                       if (videoUrl) {
@@ -656,7 +668,7 @@ export default function App() {
                     
                     {getDownloaderVideoUrl(downloaderResult) && (
                       <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                        <div className="bg-white/90 backdrop-blur-sm text-gray-900 p-4 rounded-full shadow-lg transform group-hover:scale-110 transition-transform">
+                        <div className="bg-white dark:bg-gray-800/90 backdrop-blur-sm text-gray-900 dark:text-gray-100 p-4 rounded-full shadow-lg transform group-hover:scale-110 transition-transform">
                           <Play className="w-8 h-8 ml-1" />
                         </div>
                       </div>
@@ -665,7 +677,7 @@ export default function App() {
                   
                   {/* Info & Actions */}
                   <div className="p-6 flex-1 flex flex-col">
-                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2 line-clamp-2">
                       {downloaderResult.title || "Media Siap Diunduh"}
                     </h3>
                     
@@ -674,7 +686,7 @@ export default function App() {
                         {downloaderResult.author.avatar && (
                           <img src={downloaderResult.author.avatar} alt="Author" className="w-8 h-8 rounded-full" />
                         )}
-                        <span className="text-sm font-medium text-gray-600">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
                           @{downloaderResult.author.unique_id || downloaderResult.author.nickname || "User"}
                         </span>
                       </div>
@@ -713,7 +725,7 @@ export default function App() {
                           href={downloaderResult.music} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-4 rounded-xl transition-colors"
+                          className="flex items-center justify-center gap-2 w-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-medium py-3 px-4 rounded-xl transition-colors"
                         >
                           <Music className="w-5 h-5" />
                           Download Audio
@@ -748,8 +760,8 @@ export default function App() {
                 </div>
 
                 {/* Recommendations (2 rows, horizontal scroll) */}
-                <div className="bg-white p-5 md:p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col gap-4">
-                  <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <div className="bg-white dark:bg-gray-800 p-5 md:p-6 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-4">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                     <Video className="w-6 h-6 text-black" />
                     Rekomendasi Video
                   </h3>
@@ -800,8 +812,8 @@ export default function App() {
             {!loading && currentView === "melolo" && !meloloDetail && meloloCategoriesData.length > 0 && (
               <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {meloloCategoriesData.map((categoryData, catIdx) => (
-                  <div key={catIdx} className="bg-white p-5 md:p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col gap-4">
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <div key={catIdx} className="bg-white dark:bg-gray-800 p-5 md:p-6 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-4">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                       <Play className="w-5 h-5 text-purple-600" />
                       {categoryData.category}
                     </h3>
@@ -813,9 +825,9 @@ export default function App() {
                         <div 
                           key={idx} 
                           onClick={() => handleMeloloCardClick(item)}
-                          className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer group flex flex-col hover:border-purple-300 snap-start w-[140px] sm:w-[160px] md:w-[180px]"
+                          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer group flex flex-col hover:border-purple-300 snap-start w-[140px] sm:w-[160px] md:w-[180px]"
                         >
-                          <div className="relative w-full aspect-[2/3] bg-gray-100 overflow-hidden">
+                          <div className="relative w-full aspect-[2/3] bg-gray-100 dark:bg-gray-800 overflow-hidden">
                             {item.cover ? (
                               <ImageWithFallback 
                                 src={item.cover} 
@@ -824,7 +836,7 @@ export default function App() {
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <ImageIcon className="w-8 h-8 text-gray-400" />
+                                <ImageIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                               </div>
                             )}
                             {item.status && (
@@ -837,10 +849,10 @@ export default function App() {
                             </div>
                           </div>
                           <div className="p-3 flex-1 flex flex-col gap-1">
-                            <h3 className="text-sm font-bold text-gray-800 line-clamp-2 group-hover:text-purple-600 transition-colors">
+                            <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 line-clamp-2 group-hover:text-purple-600 transition-colors">
                               {item.title || "Tanpa Judul"}
                             </h3>
-                            <p className="text-xs text-gray-500 line-clamp-1">{item.author}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 line-clamp-1">{item.author}</p>
                             <div className="mt-auto pt-2 flex items-center justify-between">
                               <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-md font-medium">
                                 {item.total_chapters} Eps
@@ -862,9 +874,9 @@ export default function App() {
                   <div 
                     key={idx} 
                     onClick={() => handleMeloloCardClick(item)}
-                    className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer group flex flex-col hover:border-purple-300"
+                    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer group flex flex-col hover:border-purple-300"
                   >
-                    <div className="relative w-full aspect-[2/3] bg-gray-100 overflow-hidden">
+                    <div className="relative w-full aspect-[2/3] bg-gray-100 dark:bg-gray-800 overflow-hidden">
                       {item.cover ? (
                         <ImageWithFallback 
                           src={item.cover} 
@@ -873,7 +885,7 @@ export default function App() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <ImageIcon className="w-8 h-8 text-gray-400" />
+                          <ImageIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                         </div>
                       )}
                       {item.status && (
@@ -883,10 +895,10 @@ export default function App() {
                       )}
                     </div>
                     <div className="p-3 flex-1 flex flex-col gap-1">
-                      <h3 className="text-sm font-bold text-gray-800 line-clamp-2 group-hover:text-purple-600 transition-colors">
+                      <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 line-clamp-2 group-hover:text-purple-600 transition-colors">
                         {item.title || "Tanpa Judul"}
                       </h3>
-                      <p className="text-xs text-gray-500 line-clamp-1">{item.author}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 line-clamp-1">{item.author}</p>
                       <div className="mt-auto pt-2 flex items-center justify-between">
                         <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-md font-medium">
                           {item.total_chapters} Eps
@@ -903,7 +915,7 @@ export default function App() {
               <div className="flex flex-col gap-4 -mt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <button 
                   onClick={() => setMeloloDetail(null)}
-                  className="group flex items-center gap-3 bg-white hover:bg-purple-50 border border-gray-200 hover:border-purple-200 text-gray-700 hover:text-purple-700 px-5 py-2.5 rounded-full font-semibold text-sm transition-all shadow-sm hover:shadow-md w-fit"
+                  className="group flex items-center gap-3 bg-white dark:bg-gray-800 hover:bg-purple-50 border border-gray-200 dark:border-gray-700 hover:border-purple-200 text-gray-700 dark:text-gray-300 hover:text-purple-700 px-5 py-2.5 rounded-full font-semibold text-sm transition-all shadow-sm hover:shadow-md w-fit"
                 >
                   <div className="bg-purple-100 text-purple-600 p-1 rounded-full group-hover:bg-purple-200 transition-colors">
                     <Play className="w-4 h-4" />
@@ -911,7 +923,7 @@ export default function App() {
                   Kembali ke Hasil Pencarian
                 </button>
                 
-                <div className="bg-white rounded-3xl border border-gray-200 p-5 md:p-6 shadow-sm flex flex-col md:flex-row gap-6">
+                <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 p-5 md:p-6 shadow-sm flex flex-col md:flex-row gap-6">
                   <div className="w-full md:w-1/4 shrink-0">
                     <div className="aspect-[2/3] rounded-2xl overflow-hidden shadow-md">
                       <ImageWithFallback src={meloloDetail.cover} alt={meloloDetail.title} className="w-full h-full object-cover" />
@@ -920,23 +932,23 @@ export default function App() {
                   <div className="flex-1 flex flex-col gap-4">
                     <div>
                       <div className="flex items-center gap-3 mb-2">
-                        <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900">{meloloDetail.title}</h2>
+                        <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-gray-100">{meloloDetail.title}</h2>
                         <span className="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-1 rounded-full">{meloloDetail.status}</span>
                       </div>
                       <div className="flex flex-wrap gap-2 mb-4">
                         {meloloDetail.tags?.map((tag: string, i: number) => (
-                          <span key={i} className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-full">{tag}</span>
+                          <span key={i} className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs px-2.5 py-1 rounded-full">{tag}</span>
                         ))}
                       </div>
                     </div>
-                    <div className="prose prose-sm text-gray-600 max-w-none">
+                    <div className="prose prose-sm text-gray-600 dark:text-gray-300 max-w-none">
                       <p>{meloloDetail.intro || meloloDetail.sinopsis}</p>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
                     <Play className="w-6 h-6 text-purple-600" />
                     Daftar Episode ({meloloDetail.total_episodes || meloloDetail.episodes?.length})
                   </h3>
@@ -948,11 +960,11 @@ export default function App() {
                       <div 
                         key={idx}
                         onClick={() => handleMeloloEpisodeClick(ep, idx)}
-                        className={`bg-white border rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all group snap-start ${
-                          activeEpisodeIndex === idx ? "border-purple-500 bg-purple-50" : "border-gray-200 hover:border-purple-300"
+                        className={`bg-white dark:bg-gray-800 border rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all group snap-start ${
+                          activeEpisodeIndex === idx ? "border-purple-500 bg-purple-50" : "border-gray-200 dark:border-gray-700 hover:border-purple-300"
                         }`}
                       >
-                        <div className="relative w-24 h-16 bg-gray-100 rounded-lg overflow-hidden shrink-0">
+                        <div className="relative w-24 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden shrink-0">
                           <ImageWithFallback src={ep.cover} alt={`Episode ${ep.episode}`} className="w-full h-full object-cover" />
                           <div className={`absolute inset-0 flex items-center justify-center transition-colors ${
                             activeEpisodeIndex === idx ? "bg-black/40" : "bg-black/20 group-hover:bg-black/40"
@@ -962,11 +974,11 @@ export default function App() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className={`font-bold transition-colors truncate ${
-                            activeEpisodeIndex === idx ? "text-purple-700" : "text-gray-900 group-hover:text-purple-600"
+                            activeEpisodeIndex === idx ? "text-purple-700" : "text-gray-900 dark:text-gray-100 group-hover:text-purple-600"
                           }`}>
                             Episode {ep.episode}
                           </h4>
-                          <p className="text-xs text-gray-500 truncate">{Math.floor(ep.duration / 60)}:{String(ep.duration % 60).padStart(2, '0')}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 truncate">{Math.floor(ep.duration / 60)}:{String(ep.duration % 60).padStart(2, '0')}</p>
                         </div>
                       </div>
                     ))}
@@ -985,7 +997,7 @@ export default function App() {
                       setYoutubeQuery(cat);
                       handleSearch(undefined, undefined, "youtube");
                     }}
-                    className="whitespace-nowrap px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                    className="whitespace-nowrap px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
                   >
                     {cat}
                   </button>
@@ -1000,9 +1012,9 @@ export default function App() {
                   <div 
                     key={idx} 
                     onClick={() => handleYoutubeCardClick(item, idx)}
-                    className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-xl transition-all cursor-pointer group flex flex-col hover:border-red-300"
+                    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden hover:shadow-xl transition-all cursor-pointer group flex flex-col hover:border-red-300"
                   >
-                    <div className="relative w-full aspect-video bg-gray-100 overflow-hidden">
+                    <div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-800 overflow-hidden">
                       {item.thumbnail ? (
                         <ImageWithFallback 
                           src={item.thumbnail} 
@@ -1011,7 +1023,7 @@ export default function App() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Youtube className="w-12 h-12 text-gray-400" />
+                          <Youtube className="w-12 h-12 text-gray-400 dark:text-gray-500" />
                         </div>
                       )}
                       {item.duration && (
@@ -1026,15 +1038,15 @@ export default function App() {
                       </div>
                     </div>
                     <div className="p-4 flex gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
-                        <Youtube className="w-5 h-5 text-gray-400" />
+                      <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 shrink-0 overflow-hidden flex items-center justify-center">
+                        <Youtube className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-bold text-gray-900 line-clamp-2 group-hover:text-red-600 transition-colors mb-1">
+                        <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-red-600 transition-colors mb-1">
                           {item.title || "Tanpa Judul"}
                         </h3>
-                        <p className="text-sm text-gray-500 truncate">{item.author}</p>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 truncate">{item.author}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">
                           {item.views && <span>{item.views.toLocaleString()} views</span>}
                           {item.views && item.uploadDate && <span>•</span>}
                           {item.uploadDate && <span>{item.uploadDate}</span>}
@@ -1051,7 +1063,7 @@ export default function App() {
               <div className="flex flex-col gap-4 -mt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <button 
                   onClick={() => setYoutubeDetail(null)}
-                  className="group flex items-center gap-3 bg-white hover:bg-red-50 border border-gray-200 hover:border-red-200 text-gray-700 hover:text-red-700 px-5 py-2.5 rounded-full font-semibold text-sm transition-all shadow-sm hover:shadow-md w-fit"
+                  className="group flex items-center gap-3 bg-white dark:bg-gray-800 hover:bg-red-50 border border-gray-200 dark:border-gray-700 hover:border-red-200 text-gray-700 dark:text-gray-300 hover:text-red-700 px-5 py-2.5 rounded-full font-semibold text-sm transition-all shadow-sm hover:shadow-md w-fit"
                 >
                   <div className="bg-red-100 text-red-600 p-1 rounded-full group-hover:bg-red-200 transition-colors">
                     <Youtube className="w-4 h-4" />
@@ -1070,27 +1082,27 @@ export default function App() {
                 </div>
 
                 {/* Video Info */}
-                <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">{youtubeDetail.currentVideo.title}</h2>
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2 font-medium text-gray-900">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+                  <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">{youtubeDetail.currentVideo.title}</h2>
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
+                    <div className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                         <Youtube className="w-4 h-4 text-red-600" />
                       </div>
                       {youtubeDetail.currentVideo.author}
                     </div>
                     {youtubeDetail.currentVideo.views && (
-                      <span className="bg-gray-100 px-3 py-1 rounded-full">{youtubeDetail.currentVideo.views.toLocaleString()} views</span>
+                      <span className="bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">{youtubeDetail.currentVideo.views.toLocaleString()} views</span>
                     )}
                     {youtubeDetail.currentVideo.uploadDate && (
-                      <span className="bg-gray-100 px-3 py-1 rounded-full">{youtubeDetail.currentVideo.uploadDate}</span>
+                      <span className="bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">{youtubeDetail.currentVideo.uploadDate}</span>
                     )}
                   </div>
                 </div>
 
                 {/* Up Next List */}
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
                     <Play className="w-5 h-5 text-red-600" />
                     Putar Selanjutnya
                   </h3>
@@ -1101,9 +1113,9 @@ export default function App() {
                         <div 
                           key={idx}
                           onClick={() => handleYoutubeCardClick(item, idx)}
-                          className="bg-white border border-gray-200 rounded-xl p-3 flex gap-4 cursor-pointer hover:border-red-300 hover:shadow-md transition-all group"
+                          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex gap-4 cursor-pointer hover:border-red-300 hover:shadow-md transition-all group"
                         >
-                          <div className="relative w-40 aspect-video bg-gray-100 rounded-lg overflow-hidden shrink-0">
+                          <div className="relative w-40 aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden shrink-0">
                             <ImageWithFallback src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
                             {item.duration && (
                               <div className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
@@ -1115,11 +1127,11 @@ export default function App() {
                             </div>
                           </div>
                           <div className="flex-1 min-w-0 py-1">
-                            <h4 className="font-bold text-sm text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 mb-1">
+                            <h4 className="font-bold text-sm text-gray-900 dark:text-gray-100 group-hover:text-red-600 transition-colors line-clamp-2 mb-1">
                               {item.title}
                             </h4>
-                            <p className="text-xs text-gray-500 mb-1">{item.author}</p>
-                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">{item.author}</p>
+                            <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
                               {item.views && <span>{item.views.toLocaleString()} views</span>}
                               {item.views && item.uploadDate && <span>•</span>}
                               {item.uploadDate && <span>{item.uploadDate}</span>}
@@ -1144,14 +1156,14 @@ export default function App() {
                   <div 
                     key={idx} 
                     onClick={() => handleCardClick(item)}
-                    className={`bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer group flex flex-col ${
+                    className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer group flex flex-col ${
                       currentView === "gimage" ? "hover:border-pink-300" : "hover:border-green-300"
                     }`}
                   >
                     {currentView === "gimage" ? (
                       // GImage Card
                       <>
-                        <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
+                        <div className="relative w-full aspect-square bg-gray-100 dark:bg-gray-800 overflow-hidden">
                           {item.image ? (
                             <ImageWithFallback 
                               src={item.image} 
@@ -1160,21 +1172,21 @@ export default function App() {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <ImageIcon className="w-8 h-8 text-gray-400" />
+                              <ImageIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                             </div>
                           )}
                           
                           {/* Video Overlay */}
                           {item.is_video && (
                             <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                              <div className="bg-white/90 backdrop-blur-sm text-pink-600 p-3 rounded-full shadow-lg transform group-hover:scale-110 transition-transform">
+                              <div className="bg-white dark:bg-gray-800/90 backdrop-blur-sm text-pink-600 p-3 rounded-full shadow-lg transform group-hover:scale-110 transition-transform">
                                 <Play className="w-6 h-6 ml-1" />
                               </div>
                             </div>
                           )}
                         </div>
                         <div className="p-3 flex-1 flex flex-col">
-                          <h3 className="text-sm font-medium text-gray-800 line-clamp-2 group-hover:text-pink-600 transition-colors">
+                          <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2 group-hover:text-pink-600 transition-colors">
                             {item.title || "Tanpa Judul"}
                           </h3>
                           <div className="mt-auto pt-2">
@@ -1187,7 +1199,7 @@ export default function App() {
                     ) : (
                       // Tokopedia Card
                       <>
-                        <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
+                        <div className="relative w-full aspect-square bg-gray-100 dark:bg-gray-800 overflow-hidden">
                           {item.thumbnail ? (
                             <img 
                               src={item.thumbnail} 
@@ -1197,18 +1209,18 @@ export default function App() {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <ShoppingBag className="w-8 h-8 text-gray-400" />
+                              <ShoppingBag className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                             </div>
                           )}
                         </div>
                         <div className="p-3 flex-1 flex flex-col gap-1.5">
-                          <h3 className="text-sm font-medium text-gray-800 line-clamp-2 group-hover:text-green-600 transition-colors">
+                          <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2 group-hover:text-green-600 transition-colors">
                             {item.name || "Tanpa Nama"}
                           </h3>
-                          <div className="font-bold text-gray-900">
+                          <div className="font-bold text-gray-900 dark:text-gray-100">
                             {item.price || "Rp0"}
                           </div>
-                          <div className="mt-auto pt-2 flex flex-col gap-1 text-xs text-gray-500">
+                          <div className="mt-auto pt-2 flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
                             {item.shop?.name && (
                               <div className="flex items-center gap-1">
                                 <Store className="w-3 h-3 shrink-0" />
@@ -1231,7 +1243,7 @@ export default function App() {
             )}
 
             {!loading && !error && currentView !== "downloader" && results.length === 0 && meloloCategoriesData.length === 0 && !meloloDetail && !youtubeDetail && !tiktokActiveVideo && (
-              <div className="text-center py-20 text-gray-500 animate-in fade-in">
+              <div className="text-center py-20 text-gray-500 dark:text-gray-400 dark:text-gray-500 animate-in fade-in">
                 {currentView === "gimage" ? (
                   <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 ) : currentView === "tiktok" ? (
@@ -1248,7 +1260,7 @@ export default function App() {
             )}
             
             {!loading && !error && currentView === "downloader" && !downloaderResult && (
-              <div className="text-center py-20 text-gray-500 animate-in fade-in">
+              <div className="text-center py-20 text-gray-500 dark:text-gray-400 dark:text-gray-500 animate-in fade-in">
                 <LinkIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 <p>Masukkan link untuk mulai mengunduh.</p>
               </div>
@@ -1268,7 +1280,7 @@ export default function App() {
                   setActiveVideoUrl(null);
                   setActiveEpisodeIndex(null);
                 }}
-                className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-full backdrop-blur-md transition-colors"
+                className="bg-white dark:bg-gray-800/10 hover:bg-white dark:bg-gray-800/20 text-white p-2 rounded-full backdrop-blur-md transition-colors"
                 title="Tutup Video"
               >
                 <X className="w-6 h-6" />
@@ -1303,7 +1315,7 @@ export default function App() {
       {/* Profile Modal */}
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white border border-gray-200 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="relative h-24 bg-gradient-to-r from-indigo-500 to-purple-600">
               <button 
                 onClick={() => setShowSettings(false)} 
@@ -1314,36 +1326,36 @@ export default function App() {
             </div>
             
             <div className="px-6 pb-6 pt-0 relative text-center">
-              <div className="w-20 h-20 bg-white rounded-full p-1.5 absolute -top-10 left-1/2 -translate-x-1/2 shadow-md">
-                <div className={`w-full h-full rounded-full flex items-center justify-center ${userLimit > 100 ? 'bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-600' : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600'}`}>
+              <div className="w-20 h-20 bg-white dark:bg-gray-800 rounded-full p-1.5 absolute -top-10 left-1/2 -translate-x-1/2 shadow-md">
+                <div className={`w-full h-full rounded-full flex items-center justify-center ${userLimit > 100 ? 'bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-600' : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 dark:text-gray-300'}`}>
                   {userLimit > 100 ? <Crown className="w-8 h-8" /> : <User className="w-8 h-8" />}
                 </div>
               </div>
               
               <div className="mt-14 mb-6">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center justify-center gap-2">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center justify-center gap-2">
                   {userLimit > 100 ? 'User Pro' : 'User Free'}
                   {userLimit > 100 && <Crown className="w-4 h-4 text-yellow-500" />}
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">
                   {visitorId ? `ID: ${visitorId.substring(0, 15)}...` : 'Memuat ID...'}
                 </p>
               </div>
               
-              <div className="bg-gray-50 rounded-2xl p-4 text-left border border-gray-100 mb-6">
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-4 text-left border border-gray-100 dark:border-gray-800 mb-6">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-600">Penggunaan API</span>
-                  <span className="text-sm font-bold text-gray-900">
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Penggunaan API</span>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
                     {requestCount} / {userLimit === 0 ? '∞' : userLimit}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
                   <div 
                     className={`h-2 rounded-full ${userLimit > 100 ? 'bg-yellow-400' : 'bg-indigo-500'}`} 
                     style={{ width: `${userLimit === 0 ? 0 : Math.min(100, (requestCount / userLimit) * 100)}%` }}
                   ></div>
                 </div>
-                <p className="text-xs text-gray-500 mt-3 text-center">
+                <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-3 text-center">
                   {userLimit > 100 ? 'Anda memiliki akses premium tanpa batas.' : 'Upgrade ke Pro untuk menghapus batasan harian.'}
                 </p>
               </div>
@@ -1362,11 +1374,11 @@ export default function App() {
       {/* Rate Limit Modal */}
       {rateLimitError && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 sm:p-8 text-center relative">
               <button 
                 onClick={() => setRateLimitError(null)}
-                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="absolute top-4 right-4 p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-800 rounded-full transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1375,8 +1387,8 @@ export default function App() {
                 <Shield className="w-10 h-10" />
               </div>
               
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">Upgrade Akses</h3>
-              <p className="text-gray-600 mb-8 leading-relaxed text-sm sm:text-base">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">Upgrade Akses</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed text-sm sm:text-base">
                 Mohon maaf, Anda telah mencapai batas penggunaan gratis. Untuk terus menikmati layanan tanpa batas, silakan upgrade akses Anda dengan menghubungi kami di bawah ini:
               </p>
               
