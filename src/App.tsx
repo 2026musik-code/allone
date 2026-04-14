@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video, Youtube, Shield, User, Crown, Moon, Sun } from "lucide-react";
+import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video, Youtube, Shield, User, Crown, Moon, Sun, CheckCircle2 } from "lucide-react";
 import AdminPanel from "./AdminPanel";
 import { db } from './firebase';
 import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
@@ -40,7 +40,19 @@ export default function App() {
   }
 
   const [apiKey, setApiKey] = useState("");
-  const [currentView, setCurrentView] = useState<"home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo" | "youtube">("home");
+  const [currentView, setCurrentView] = useState<"home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo" | "youtube">(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('currentView');
+      if (saved && ["home", "gimage", "tokopedia", "downloader", "tiktok", "melolo", "youtube"].includes(saved)) {
+        return saved as any;
+      }
+    }
+    return "home";
+  });
+
+  useEffect(() => {
+    localStorage.setItem('currentView', currentView);
+  }, [currentView]);
   
   // Rate limiting state
   const [visitorId, setVisitorId] = useState<string | null>(null);
@@ -155,6 +167,21 @@ export default function App() {
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
   const [activeVideoType, setActiveVideoType] = useState<"iframe" | "video">("iframe");
   const [activeEpisodeIndex, setActiveEpisodeIndex] = useState<number | null>(null);
+  const [watchedEpisodes, setWatchedEpisodes] = useState<Record<string, boolean>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('watchedEpisodes');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {}
+      }
+    }
+    return {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('watchedEpisodes', JSON.stringify(watchedEpisodes));
+  }, [watchedEpisodes]);
 
   // Autoplay TikTok videos on scroll
   useEffect(() => {
@@ -362,6 +389,12 @@ export default function App() {
 
   const handleMeloloEpisodeClick = async (episode: any, index: number) => {
     try {
+      if (meloloDetail?.book_id) {
+        setWatchedEpisodes(prev => ({
+          ...prev,
+          [`${meloloDetail.book_id}_${episode.video_id}`]: true
+        }));
+      }
       setLoading(true);
       const res = await fetch(`https://api.ferdev.my.id/internet/melolo/stream?videoId=${episode.video_id}&apikey=${apiKey}`);
       const data = await res.json();
@@ -956,32 +989,41 @@ export default function App() {
                     className="grid grid-rows-3 grid-flow-col gap-4 overflow-x-auto pb-6 snap-x hide-scrollbar" 
                     style={{ gridAutoColumns: "minmax(280px, 1fr)" }}
                   >
-                    {meloloDetail.episodes?.map((ep: any, idx: number) => (
-                      <div 
-                        key={idx}
-                        onClick={() => handleMeloloEpisodeClick(ep, idx)}
-                        className={`bg-white dark:bg-gray-800 border rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all group snap-start ${
-                          activeEpisodeIndex === idx ? "border-purple-500 bg-purple-50" : "border-gray-200 dark:border-gray-700 hover:border-purple-300"
-                        }`}
-                      >
-                        <div className="relative w-24 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden shrink-0">
-                          <ImageWithFallback src={ep.cover} alt={`Episode ${ep.episode}`} className="w-full h-full object-cover" />
-                          <div className={`absolute inset-0 flex items-center justify-center transition-colors ${
-                            activeEpisodeIndex === idx ? "bg-black/40" : "bg-black/20 group-hover:bg-black/40"
-                          }`}>
-                            <Play className={`w-6 h-6 ${activeEpisodeIndex === idx ? "text-purple-400" : "text-white"}`} />
+                    {meloloDetail.episodes?.map((ep: any, idx: number) => {
+                      const isWatched = watchedEpisodes[`${meloloDetail.book_id}_${ep.video_id}`];
+                      return (
+                        <div 
+                          key={idx}
+                          onClick={() => handleMeloloEpisodeClick(ep, idx)}
+                          className={`bg-white dark:bg-gray-800 border rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all group snap-start relative overflow-hidden ${
+                            activeEpisodeIndex === idx ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-gray-200 dark:border-gray-700 hover:border-purple-300"
+                          }`}
+                        >
+                          {isWatched && (
+                            <div className="absolute -right-6 top-2 bg-green-500 text-white text-[10px] font-bold px-6 py-0.5 rotate-45 shadow-sm z-10">
+                              DITONTON
+                            </div>
+                          )}
+                          <div className="relative w-24 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden shrink-0">
+                            <ImageWithFallback src={ep.cover} alt={`Episode ${ep.episode}`} className="w-full h-full object-cover" />
+                            <div className={`absolute inset-0 flex items-center justify-center transition-colors ${
+                              activeEpisodeIndex === idx ? "bg-black/40" : "bg-black/20 group-hover:bg-black/40"
+                            }`}>
+                              <Play className={`w-6 h-6 ${activeEpisodeIndex === idx ? "text-purple-400" : "text-white"}`} />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0 pr-4">
+                            <h4 className={`font-bold transition-colors truncate flex items-center gap-2 ${
+                              activeEpisodeIndex === idx ? "text-purple-700 dark:text-purple-400" : "text-gray-900 dark:text-gray-100 group-hover:text-purple-600"
+                            }`}>
+                              Episode {ep.episode}
+                              {isWatched && <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />}
+                            </h4>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{Math.floor(ep.duration / 60)}:{String(ep.duration % 60).padStart(2, '0')}</p>
                           </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className={`font-bold transition-colors truncate ${
-                            activeEpisodeIndex === idx ? "text-purple-700" : "text-gray-900 dark:text-gray-100 group-hover:text-purple-600"
-                          }`}>
-                            Episode {ep.episode}
-                          </h4>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 truncate">{Math.floor(ep.duration / 60)}:{String(ep.duration % 60).padStart(2, '0')}</p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
