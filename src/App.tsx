@@ -216,12 +216,12 @@ export default function App() {
     // API Key is now fetched from Firebase in the other useEffect
   }, []);
 
-  // Re-run search when view changes (if not home)
+  // Re-run search when view changes (if not home) or when apiKey is loaded
   useEffect(() => {
-    if (currentView !== "home") {
+    if (currentView !== "home" && apiKey) {
       handleSearch(undefined, apiKey, currentView);
     }
-  }, [currentView]);
+  }, [currentView, apiKey]);
 
   const handleSearch = async (e?: React.FormEvent, keyToUse?: string, viewToUse?: "home" | "gimage" | "tokopedia" | "downloader" | "tiktok" | "melolo" | "youtube") => {
     if (e) e.preventDefault();
