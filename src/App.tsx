@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video, Youtube, Shield, User, Crown, Moon, Sun, CheckCircle2 } from "lucide-react";
+import { Search, Settings, Loader2, AlertCircle, X, Play, Image as ImageIcon, ShoppingBag, Store, MapPin, ArrowLeft, LayoutGrid, Plus, Download, Link as LinkIcon, Music, Video, Youtube, Shield, User, Crown, Moon, Sun, CheckCircle2, Pause, FastForward, Rewind, SkipForward } from "lucide-react";
 import AdminPanel from "./AdminPanel";
 import { db } from './firebase';
 import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
@@ -167,6 +167,74 @@ export default function App() {
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
   const [activeVideoType, setActiveVideoType] = useState<"iframe" | "video">("iframe");
   const [activeEpisodeIndex, setActiveEpisodeIndex] = useState<number | null>(null);
+  
+  // Custom Video Player State
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleVideoInteraction = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      if (isPlaying) {
+        setShowControls(false);
+      }
+    }, 3000);
+  };
+
+  useEffect(() => {
+    if (activeVideoUrl) {
+      handleVideoInteraction();
+    }
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [activeVideoUrl, isPlaying]);
+
+  const handlePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        videoRef.current.play();
+        setIsPlaying(true);
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+      handleVideoInteraction();
+    }
+  };
+
+  const handleFastForward = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      videoRef.current.currentTime += 10;
+      handleVideoInteraction();
+    }
+  };
+
+  const handleRewind = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      videoRef.current.currentTime -= 10;
+      handleVideoInteraction();
+    }
+  };
+
+  const handleNextEpisode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentView === "melolo" && meloloDetail && activeEpisodeIndex !== null) {
+      const nextIdx = activeEpisodeIndex + 1;
+      if (nextIdx < meloloDetail.episodes.length) {
+        handleMeloloEpisodeClick(meloloDetail.episodes[nextIdx], nextIdx);
+      }
+    }
+  };
+
   const [watchedEpisodes, setWatchedEpisodes] = useState<Record<string, boolean>>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('watchedEpisodes');
@@ -1332,7 +1400,11 @@ export default function App() {
             </div>
             
             {/* Iframe/Video Container */}
-            <div className="w-full h-full flex-1 flex items-center justify-center bg-black">
+            <div 
+              className="w-full h-full flex-1 flex items-center justify-center bg-black relative group"
+              onMouseMove={handleVideoInteraction}
+              onClick={handleVideoInteraction}
+            >
               {activeVideoType === "iframe" ? (
                 <iframe 
                   src={activeVideoUrl} 
@@ -1341,15 +1413,77 @@ export default function App() {
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 ></iframe>
               ) : (
-                <video 
-                  src={activeVideoUrl} 
-                  controls 
-                  autoPlay
-                  playsInline
-                  referrerPolicy="no-referrer"
-                  onEnded={handleVideoEnded}
-                  className="w-full h-full object-contain"
-                />
+                <>
+                  <video 
+                    ref={videoRef}
+                    src={activeVideoUrl} 
+                    controls={true}
+                    autoPlay
+                    playsInline
+                    referrerPolicy="no-referrer"
+                    onEnded={handleVideoEnded}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    className="w-full h-full object-contain"
+                  />
+                  
+                  {/* Custom Overlay Controls */}
+                  <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
+                    {/* Top Info Bar */}
+                    {currentView === 'melolo' && meloloDetail && activeEpisodeIndex !== null && (
+                      <div className="absolute top-0 left-0 right-0 p-4 pt-16 bg-gradient-to-b from-black/80 to-transparent flex justify-between items-start">
+                        <div className="text-white">
+                          <h3 className="font-bold text-lg md:text-xl drop-shadow-md">{meloloDetail.title}</h3>
+                          <p className="text-sm md:text-base text-gray-200 drop-shadow-md">
+                            Episode {meloloDetail.episodes[activeEpisodeIndex].episode}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Center Controls */}
+                    <div className="absolute inset-0 flex items-center justify-center gap-4 md:gap-8">
+                      <button 
+                        onClick={handleRewind}
+                        className="pointer-events-auto bg-black/40 hover:bg-black/60 text-white p-3 md:p-4 rounded-full backdrop-blur-sm transition-all transform hover:scale-110"
+                        title="Mundur 10 detik"
+                      >
+                        <Rewind className="w-6 h-6 md:w-8 md:h-8" />
+                      </button>
+                      
+                      <button 
+                        onClick={handlePlayPause}
+                        className="pointer-events-auto bg-purple-600/80 hover:bg-purple-600 text-white p-4 md:p-6 rounded-full backdrop-blur-sm transition-all transform hover:scale-110 shadow-lg"
+                        title={isPlaying ? "Jeda" : "Putar"}
+                      >
+                        {isPlaying ? <Pause className="w-8 h-8 md:w-10 md:h-10" /> : <Play className="w-8 h-8 md:w-10 md:h-10 ml-1" />}
+                      </button>
+
+                      <button 
+                        onClick={handleFastForward}
+                        className="pointer-events-auto bg-black/40 hover:bg-black/60 text-white p-3 md:p-4 rounded-full backdrop-blur-sm transition-all transform hover:scale-110"
+                        title="Maju 10 detik"
+                      >
+                        <FastForward className="w-6 h-6 md:w-8 md:h-8" />
+                      </button>
+                    </div>
+
+                    {/* Next Episode Button (Bottom Right) */}
+                    {currentView === 'melolo' && meloloDetail && activeEpisodeIndex !== null && activeEpisodeIndex + 1 < meloloDetail.episodes.length && (
+                      <div className="absolute bottom-20 right-4 md:bottom-24 md:right-8">
+                        <button 
+                          onClick={handleNextEpisode}
+                          className="pointer-events-auto flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/30 text-white px-4 py-2 rounded-full backdrop-blur-md transition-all transform hover:scale-105 shadow-lg"
+                          title="Episode Selanjutnya"
+                        >
+                          <span className="text-sm font-medium hidden md:block">Episode {meloloDetail.episodes[activeEpisodeIndex + 1].episode}</span>
+                          <span className="text-sm font-medium md:hidden">Next</span>
+                          <SkipForward className="w-4 h-4 md:w-5 md:h-5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </div>
